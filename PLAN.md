@@ -1,8 +1,8 @@
-# Daily Planner — End-to-End Build Plan
+# Life Of Pi — End-to-End Build Plan
 
-A personal, single-user daily planner with the same feature set, flows, and feel as Sunsama — minus third-party integrations.
+A personal, single-user daily planner with the same feature set, flows and feel as Sunsama, minus integrations and AI drafting. Built as a web app first, then wrapped as a Windows app.
 
-**Working name:** Meridian (placeholder — rename any time)
+**Visual flow reference:** https://claude.ai/artifact/WoeYgxdcnkbEg14AzH5hQz (every flow drawn screen by screen)
 
 ---
 
@@ -10,68 +10,61 @@ A personal, single-user daily planner with the same feature set, flows, and feel
 
 | | |
 |---|---|
-| **Goal** | Feature and flow parity with Sunsama's core product: day-column board, timeboxing calendar, guided daily planning, daily shutdown, weekly planning/review, focus mode, backlog, channels, objectives, onboarding. |
-| **In scope** | Everything a single user does inside the app, end to end: first launch → onboarding → first plan → working the day → shutdown → weekly cycle. |
-| **Out of scope** | Integrations (Google/Outlook calendar, Slack, Gmail, Asana, Jira, Notion, etc.), team/workspace features, billing, email-to-task, native mobile apps. |
-| **Replaced, not dropped** | Calendar sync → a built-in local calendar. "Post plan to Slack" → copy as Markdown. Sign-up → local profile. |
-| **Branding** | Same behaviour, layout logic, and calm visual feel. Own name, logo, illustrations, and written copy — nothing lifted from Sunsama's assets or text. |
-| **Fidelity limit** | I can't read Sunsama's source, exact hex values, or easing curves. Tokens and motion are tuned by eye against reference screenshots (see §12, decision 3). |
+| **Goal** | Feature and flow parity with Sunsama's core product: Today view, day-column board, timeboxing calendar, guided daily planning, daily shutdown and highlights, weekly objectives, weekly planning and review, focus mode, backlog, archive, channels, onboarding. |
+| **Source of truth** | Sunsama's user manual (help.sunsama.com). Steps, defaults, rules and shortcuts in this plan are taken from it. Look and motion are tuned by eye against videos and screenshots. |
+| **Platform** | Web app first. Windows app second, as a thin shell around the same build (§3). |
+| **Out of scope** | Calendar and task-tool integrations, the AI planning agent and assistant, AI summaries and suggestions, accounts, teammates, sharing to chat or email, billing, mobile apps. |
+| **Replaced, not dropped** | Calendar sync → built-in calendar. Sign-up → local profile. Post to Slack/Teams → copy as text. AI-drafted highlights → highlights you pick. |
+| **Branding** | Same behaviour and layout logic, same calm feel. Own name, logo, illustrations and long-form copy. |
 
 ---
 
 ## 1. Feature inventory
 
-### 1.1 Planning surfaces
-| Feature | What it does |
-|---|---|
-| **Board (home)** | Horizontally scrolling columns, one per day. Today is anchored and highlighted. Each column: date header, add-task row, workload bar, task cards. Infinite scroll both directions. |
-| **My Day** | Single-day view: today's task list on the left, today's timeline on the right. |
-| **Calendar view** | Full day / 3-day / week time grid with a task list rail to drag from. |
-| **Right panel** | Collapsible rail next to the board, switchable between Calendar (today's timeline), Backlog, Objectives, Archive. |
-| **Backlog** | Unscheduled tasks, grouped into folders (e.g. Soon, Someday, custom). Drag onto any day. |
-| **Archive** | Searchable list of archived tasks with restore. |
+### 1.1 Views
+| View | Key | What it is |
+|---|---|---|
+| **Today** | `T` | Default opening view. This week's objectives · today's task list · right panel. |
+| **This week** | `N` | Weekly objectives with the tasks aligned to each, "What remains" and "Progress" cards. |
+| **Board** | `H` | One column per day, scrolling both ways. Date header, Add task, workload counter, task cards. |
+| **Calendar** | `J` | Calendar in the centre (one day, three days, weekdays, week, month), tasks in the right panel. |
+| **Focus** | `F` | One task, its subtasks, notes and timer. |
+| **Backlog** | `B` | Full-page backlog with time buckets and folders. |
+| **Right panel** | `>` | Calendar, weekly objectives, compact backlog, archive, search, trash. |
 
 ### 1.2 Tasks
-| Feature | What it does |
+| Feature | Behaviour |
 |---|---|
-| **Task card** | Completion circle, title, channel tag, planned time, actual time, subtask progress, due date, rollover badge, recurring icon. Hover reveals quick actions. |
-| **Task detail modal** | Title, rich-text notes, subtasks (each with own planned/actual time), channel, start date, due date, planned time, actual time + timer, objective link, recurrence, activity log, duplicate / move to backlog / archive / delete. |
-| **Inline add** | Type a title, Enter to create, keep typing for the next. Inline tokens: `#channel`, `30m` / `1h30` for planned time. |
-| **Subtasks** | Checklist with reorder, per-subtask time, convert subtask ↔ task. |
-| **Planned vs actual** | Planned is an estimate; actual accrues from the timer or manual entry. Both shown on card and totals. |
-| **Recurring tasks** | Daily / weekdays / weekly on days / monthly / custom interval. Edit "this", "this and following", or "all". |
-| **Due dates** | Independent of the scheduled day; overdue and due-soon states surface on the card. |
+| **Add task** | `A` opens the add window. Typing shortcuts: `~` planned time, `#` channel, `!` priority, `@` start date (or `@backlog`), `$` objective, `>` make subtask of another, `<` backlog folder. |
+| **Task card** | Check circle, title, channel, planned and actual time, subtask progress, rollover-count badge, priority flag, "This week" label when linked to an objective. |
+| **Task page** | Title, rich-text notes, subtasks with their own times, channel, start date, planned/actual, timer, objective, priority, "…" menu (Repeat, Duplicate, Delete). |
+| **Planned vs actual** | Planned is the estimate; actual comes from the timer or manual entries, editable per day. |
+| **Subtasks** | Timed and completable; checking one counts as activity for the day. |
+| **Recurring** | Daily, weekdays, weekly on chosen days (every 1–8 weeks), monthly (date or weekday pattern), yearly. Optional "at roughly" time. Series editing from any instance. |
+| **Priority** | Daily: Urgent, Priority, Normal, Low (resets daily). Backlog: Urgent, High, Medium, Low, None (persistent). |
+| **Trash** | Deleted tasks restorable for 7 days. |
 
 ### 1.3 Time
-| Feature | What it does |
+| Feature | Behaviour |
 |---|---|
-| **Timeboxing** | Drag a task onto the timeline to create a block. Move and resize with 5-minute snapping. One task can have several blocks. |
-| **Auto-schedule** | One keystroke places the task in the next free slot inside working hours. |
-| **Local events** | Click-drag on the grid to create an event (meeting, appointment). Events count as busy time; can be converted to a task. |
-| **Timer** | Start/stop on any task or subtask. One running timer at a time. Visible in a persistent focus bar. |
-| **Focus mode** | Full-screen single task: title, notes, subtasks, large timer, optional pomodoro intervals, "complete and next". |
-| **Workload bar** | Per-day planned total vs daily capacity; turns amber near the limit, red over it. |
+| **Timeboxing** | Drag a task onto the calendar, or `X` to auto-schedule. Move and resize with 5-minute snapping. Multiple sessions per task. |
+| **Events** | Created on the built-in calendar; block time for auto-scheduling; can be dragged into the task list. |
+| **Timer** | `Space` starts or stops. Starting a timer enters focus mode (setting). |
+| **Breaks** | `K`. Optional reminders, 25 minutes on and 5 off by default. Task-timer or Pomodoro display. |
+| **Focus bar** | Current task, timer, play/pause, complete, hide. Docked in the web app; floating on Windows. |
+| **Workload counter** | Per day, against the workload threshold; yellow near it, red over it. |
 
 ### 1.4 Rituals
-| Feature | What it does |
-|---|---|
-| **Daily planning** | Guided multi-step flow that produces the day's plan (§4.2). |
-| **Daily shutdown** | Guided review of the day with reflection (§4.4). |
-| **Weekly planning** | Review last week, set 3–5 objectives, pre-place tasks across the week. |
-| **Weekly review** | Time by channel, planned vs actual, objective outcomes, written reflection. |
-| **Daily highlights** | Journal feed: each day's plan summary and shutdown reflection. |
+| Ritual | Default time | Steps |
+|---|---|---|
+| **Daily planning** `P` | Chosen in first run | Reflect on yesterday (conditional) → Add tasks → Check the workload → Finalize → Daily plan |
+| **Daily shutdown** `O` | 17:00 | Review your day → Highlights and reflection → Close |
+| **Weekly planning** | Monday 08:00 | Objectives → Weekly plan |
+| **Weekly review** | Friday 15:00 | Objectives in review → What got done → Summary |
+| **Highlights** | — | Feed of each day's highlights and reflection, by date |
 
 ### 1.5 Organisation and utility
-| Feature | What it does |
-|---|---|
-| **Contexts and channels** | Contexts (Work, Personal) contain channels (`#deep-work`, `#admin`). Each channel has a colour. Filter the board by context or channel. |
-| **Objectives** | Weekly goals; tasks link to an objective; progress = linked tasks done. |
-| **Command palette** | `Cmd/Ctrl+K`: jump to date, search tasks, run any action. |
-| **Keyboard shortcuts** | Full keymap for add, complete, schedule, focus, move, set time/channel/due, navigate days (§7). |
-| **Undo** | `Cmd/Ctrl+Z` plus an undo toast for every destructive or bulk action. |
-| **Reminders** | Browser notifications: time to plan, time to shut down, timebox starting, timer still running. |
-| **Settings** | Profile, working hours, capacity, ritual times and steps, rollover and auto-archive rules, week start, time format, theme, channels, shortcuts, data export/import. |
-| **Themes** | Light and dark. |
+Contexts and channels (with a personal context that never counts toward workload), channel filter `Shift F`, command palette `Ctrl K`, search `Ctrl F`, full keymap (§8), undo `Ctrl Z`, celebrations (confetti, sparkles, emoji; switchable), dark mode `Shift L`, data export/import.
 
 ---
 
@@ -79,296 +72,252 @@ A personal, single-user daily planner with the same feature set, flows, and feel
 
 | Layer | Choice | Why |
 |---|---|---|
-| App | **React + TypeScript + Vite** (SPA) | Fast dev loop, no server needed for a personal tool. |
-| Routing | **TanStack Router** | Typed routes and search params (date, panel, modal state in the URL). |
-| Data | **Dexie (IndexedDB)** as source of truth, `useLiveQuery` for reads | Instant, offline, zero hosting cost. Every interaction is local, which is what makes the UI feel immediate. |
-| Write layer | Thin **command layer** (`createTask`, `moveTask`, …) with inverse ops | One place for business rules, undo, and activity logging. A sync backend can be added behind it later. |
-| UI state | **Zustand** | Ephemeral state only: selection, open panels, drag state, running timer tick. |
-| Styling | **Tailwind CSS** + CSS-variable design tokens | Tokens drive light/dark and make by-eye tuning a one-file change. |
-| Primitives | **Radix UI** | Accessible dialog, popover, dropdown, tooltip, without imposed styling. |
-| Drag and drop | **dnd-kit** | Board reorder, cross-column moves, and drag-to-timeline in one system. |
-| Motion | **Motion** (Framer Motion) | Layout animations, shared-element transitions, springs. |
-| Calendar grid | **Custom-built** | Off-the-shelf calendars fight you on drag feel and visual fidelity. |
-| Rich text | **Tiptap** | Notes with checklists, links, Markdown shortcuts. |
-| Dates | **date-fns** + **rrule** | Date maths and recurrence expansion. |
+| App | **React + TypeScript + Vite** (static SPA) | No server; the same build runs in a browser and inside the Windows shell. |
+| Routing | **TanStack Router** | Typed routes; date, panel and open task live in the URL. |
+| Data | **Dexie (IndexedDB)**, `useLiveQuery` for reads | Local, instant, offline. Works unchanged inside the Windows shell. |
+| Write layer | **Command layer** with inverse operations | One home for business rules, undo and activity logging; a hosted sync backend can sit behind it later. |
+| UI state | **Zustand** | Selection, panels, drag state, timer tick. |
+| Styling | **Tailwind CSS** + CSS-variable tokens | Light/dark and by-eye calibration from one file. |
+| Primitives | **Radix UI** | Accessible dialog, popover, menu, tooltip. |
+| Drag and drop | **dnd-kit** | Board, lists and drag-to-calendar in one system. |
+| Motion | **Motion** (Framer Motion) | Layout animation, springs, shared-element transitions. |
+| Calendar | **Custom time grid** | Full control of drag feel and visuals. |
+| Rich text | **Tiptap** | Notes with `/` menu and Markdown shortcuts. |
+| Dates | **date-fns**, **rrule** | Date maths and recurrence. |
 | Palette | **cmdk** | Command palette. |
-| Virtualisation | **TanStack Virtual** | Infinite day columns without DOM bloat. |
-| PWA | **vite-plugin-pwa** | Installable, offline, notification support. |
-| Tests | **Vitest** (rules engine), **Playwright** (end-to-end flows + screenshots) | The logic in §5 is where bugs hide; the flows in §4 are what must not break. |
+| Tests | **Vitest**, **Playwright** | Rules engine unit tests; end-to-end flows with a mocked clock. |
 
-**Project layout**
 ```
 src/
-  app/            routes, shell, providers
-  features/       board/ calendar/ task/ rituals/ focus/ backlog/
-                  objectives/ onboarding/ settings/ palette/
-  domain/         pure rules: rollover, workload, recurrence, scheduling, ordering
-  data/           Dexie schema, commands, queries, undo, export/import
-  ui/             design-system components (Button, Card, Popover, TimeInput…)
-  styles/         tokens.css, motion.ts
-e2e/              Playwright specs
+  app/        routes, shell, providers
+  features/   today/ week/ board/ calendar/ task/ focus/ rituals/
+              backlog/ archive/ onboarding/ settings/ palette/
+  domain/     pure rules: rollover, archive, workload, scheduling, recurrence, ordering
+  data/       Dexie schema, commands, queries, undo, export/import
+  platform/   one interface, two implementations: web now, Windows later
+  ui/         design-system components
+  styles/     tokens.css, motion.ts
+src-tauri/    Windows shell (added in Phase 8)
+e2e/          Playwright specs
 ```
 
 ---
 
-## 3. Data model
+## 3. Web first, Windows after
+
+The Windows app is the same web build inside **Tauri** (uses the WebView2 runtime already on Windows 10/11; small installer, low memory). To keep that step small, the web app is built with these constraints from day one:
+
+| Decision now | Why it matters later |
+|---|---|
+| Static SPA, no server, no cookies | The shell just loads the built files. |
+| Everything OS-related goes through `src/platform/` | Notifications, global shortcuts, tray, floating focus bar, launch at login, backup files: web gets a browser version or a no-op; Windows gets the native version. No feature code changes. |
+| Data access only through the command layer | Storage can stay IndexedDB or move to a SQLite file without touching features. |
+| Single-letter shortcuts, as Sunsama uses | Avoids browser-reserved combinations; the few `Ctrl` ones are intercepted. |
+| Focus bar is its own component | Docked in the web app, moved into a small always-on-top window on Windows. |
+
+**What the Windows app adds:** floating focus bar, tray icon with timer, global shortcuts (`Ctrl Shift A` add task, `Ctrl Shift Space` timer, `Ctrl Shift F` focus bar), native notifications, launch at login, automatic backup file in Documents.
+
+**How it gets built:** this environment is Linux, so the installer is produced by a GitHub Actions workflow on a Windows runner and attached to a release.
+
+**Two things to know:**
+- Data in the browser and data in the Windows app are separate stores. Export from one, import into the other.
+- The installer will be unsigned, so Windows shows a SmartScreen prompt on first install.
+
+---
+
+## 4. Data model
 
 | Entity | Key fields |
 |---|---|
-| **Profile** | name, createdAt, onboardingCompletedAt |
-| **Settings** | workingHours{start,end}, dailyCapacityMin, weekStartsOn, timeFormat, theme, planningTime, planningFor(`today`/`tomorrow`), shutdownTime, enabledRitualSteps, rolloverPosition(`top`/`bottom`), autoArchiveAfterRollovers, defaultChannelId, defaultBlockMin, notifications{…} |
-| **Context** | id, name, order |
-| **Channel** | id, contextId, name, color, order, archived |
-| **Task** | id, title, notes(JSON), channelId, **scheduledDate**(null = backlog), backlogFolderId, order(fractional index), plannedMin, dueDate, startDate, completedAt, archivedAt, archiveReason, rolloverCount, objectiveId, recurrenceId, recurrenceInstanceDate, createdAt, updatedAt |
+| **Profile** | name, createdAt, onboardingCompletedAt, guidedPlansRemaining |
+| **Settings** | timeFormat, weekStartsOn, defaultView, newTaskPosition, rolloverPosition, priorityRollover[], workloadThresholdMin (or per weekday), countPlannedAsActual, schedule{per weekday start/end or unavailable}, planningTime, autoPlanning, autoRolloverInEvening, shutdownAuto, endOfDayMessage, weeklyPlan{day,time,auto}, weeklyReview{day,time,auto}, combineWeekly, includeWeekends, journalingStep, defaultBlockMin, autoScheduleGapMin, rescheduleOnConflict, rescheduleOnEarlyFinish, focusOnTimerStart, breakReminders{on,workMin,breakMin}, focusTimerMode, sounds{…}, celebrations{…}, darkMode, archiveAfterDays (1–14 or off) |
+| **Context** | id, name, color, isPersonal, order |
+| **Channel** | id, contextId, name, color, isDefault, enabled, schedule? |
+| **Task** | id, title, notes, channelId, **date** (null = backlog), order, plannedMin, dailyPriority, backlogPriority, backlogBucket, backlogFolderId, objectiveId, completedAt, rolloverDays, lastActivityDate, archivedAt, deletedAt, seriesId, seriesDate, edited, kind (`task`/`ritual`/`setup`) |
 | **Subtask** | id, taskId, title, order, plannedMin, completedAt |
-| **TimeEntry** | id, taskId, subtaskId?, start, end(null = running), source(`timer`/`manual`) |
-| **TimeBlock** | id, kind(`timebox`/`event`), taskId?, title, date, startMin, endMin, color |
-| **Recurrence** | id, rrule, templateTask{…}, startDate, endDate?, exceptions[] |
+| **TimeEntry** | id, taskId, subtaskId?, start, end (null = running) |
+| **Session** | id, taskId, date, startMin, endMin (a timebox) |
+| **Event** | id, title, date, startMin, endMin, channelId?, repeat?, blocksTime |
+| **Series** | id, rrule, atRoughlyMin?, rigid, template{title, notes, subtasks, channelId, plannedMin} |
 | **BacklogFolder** | id, name, order |
-| **Objective** | id, weekStart, title, notes, status(`open`/`done`/`dropped`), order |
-| **DayRecord** | date, planStatus, planStep, plannedAt, planSummary, shutdownStatus, shutdownAt, reflection |
-| **WeekRecord** | weekStart, planStatus, reviewStatus, reflection |
-| **Activity** | id, taskId, type, payload, at |
+| **Objective** | id, weekStart, title, notes, channelId, order, completedAt, extendedToWeek? |
+| **DayRecord** | date, planStatus, planStep, planText, obstacles, shutdownTime, shutdownStatus, highlights[], mood, reflection, publishedAt |
+| **WeekRecord** | weekStart, planStatus, planText, reviewStatus, reviewText |
 
-Derived, never stored: actual minutes (sum of TimeEntries), day workload, objective progress, subtask progress.
+Derived, never stored: actual minutes, workload, partial-credit copies on earlier days, objective progress.
 
 ---
 
-## 4. Flows
+## 5. Flows
 
-### 4.1 First launch and onboarding
-The onboarding answers directly seed settings — nothing is asked that isn't used.
+The screens for each step are drawn in the flow reference linked at the top.
 
-| # | Screen | Collects | Drives |
+### 5.1 First run
+Three setup screens, then guided planning that must be completed to reach the workspace.
+
+| # | Screen | Sets | Sunsama equivalent |
 |---|---|---|---|
-| 1 | Welcome | — | Sets the calm tone; single "Get started" action. |
-| 2 | Your name | name | Greetings in rituals ("Good morning, …"). |
-| 3 | What are you planning? | Work / Personal / Both | Seeds contexts and a starter channel set for each. |
-| 4 | Your channels | edit the seeded list, pick colours | Channel list and default channel. |
-| 5 | Your workday | start, end, focused hours per day | Working hours, daily capacity, calendar's visible range. |
-| 6 | When do you plan? | morning of / evening before + time | Planning trigger rule (§5.5). |
-| 7 | When do you stop? | shutdown time | Shutdown reminder and trigger. |
-| 8 | Reminders | notification permission (skippable) | Browser notifications. |
-| 9 | **Guided first plan** | the real daily-planning flow with coach marks | First real tasks and timeboxes — no demo data. |
-| 10 | Board | — | Lands on today with a dismissible 5-item getting-started checklist. |
+| 1 | Profile: your name | Profile | Sign-up |
+| 2 | Workday: hours, workload threshold, starter contexts and channels | Schedule, threshold, channels | Pick your task tools |
+| 3 | Calendar: add fixed repeating commitments (skippable) | Events | Connect your calendars |
+| 4 | Planning time | Morning mode (before 15:00) or evening mode | Choose your daily planning time |
+| 5 | Today or tomorrow | Which day the first plan is for | same |
+| 6 | Add tasks | First real tasks | same |
+| 7 | Set time estimates | Planned times; warns over threshold | same |
+| 8 | Fill in the rest: drag events and backlog items into the day | Honest workload | Fill in from other tools |
+| 9 | Push back what can wait | Tomorrow / Next week / any day | same |
+| 10 | Finalize: order, timebox, shutdown time → **Looks good** | Sessions, shutdown time | same |
+| 11 | Review and start → **Get started** | Plan text, obstacles | Share and start |
 
-Progress is persisted per step, so a refresh resumes where you left off. Every step has Back; steps 4 and 8 have Skip.
+Guided steps show a coach panel on the left and a progress bar on top. Afterwards: land on the workspace, a "Set up Life Of Pi" task appears in today's list, and the coached version runs again for the next two planning sessions.
 
-### 4.2 Daily planning ritual
-Full-screen, one decision per step, progress dots at top, `Enter` advances.
+### 5.2 Daily planning
+Opens with `P`, the Plan item, Plan at the top of a board column, or automatically at the planning time. `←` `→` move between steps.
 
-| Step | Prompt | Layout | Logic |
-|---|---|---|---|
-| 1. **Gather** | What do you want to get done today? | Centre: today's list with inline add. Left: yesterday's unfinished. Right: backlog. | Rolled-over tasks are pre-listed with a badge. Drag or click to pull in from either side. |
-| 2. **Estimate** | How long will each take? | Today's list, time picker focused on first unestimated task. | `Tab` walks the tasks. Channel can be set here too. Running total shown. |
-| 3. **Right-size** | Shown only if total > capacity | Today's list next to drop zones: Tomorrow, Later this week, Backlog. | Live "over by 1h 20m" counter; Continue enables at any time but the warning stays visible until under capacity. |
-| 4. **Order and schedule** | What comes first? | Today's list next to today's timeline. | Drag to reorder; drag to timeline to timebox; "Schedule all" auto-places in order around events. |
-| 5. **Commit** | Your plan for today | Read-only summary: tasks by channel, total, first block. | "Copy as Markdown", then **Start my day** → marks `planStatus = done`, lands on My Day. |
-
-Steps 3 and 4 can be disabled in settings. Exiting mid-flow saves the step and shows a "Resume planning" banner.
-
-### 4.3 Working the day
-1. Open app → My Day or Board, today in focus.
-2. Start a task: press `F` (focus mode) or click the timer. Focus bar appears app-wide.
-3. Check off subtasks; notes autosave.
-4. Complete: timer stops, entry saved, card animates to done, next task offered.
-5. Things change: drag to another day, to backlog, or re-timebox. Workload bars update live.
-6. New input: `A` anywhere to add; inline tokens set channel and time.
-
-### 4.4 Daily shutdown ritual
-| Step | Prompt | Content |
+| Step | Screen | Logic |
 |---|---|---|
-| 1. **Review** | What did you get done? | Completed tasks with planned vs actual; total time; split by channel. Missed time can be added. |
-| 2. **Loose ends** | What's left? | Each unfinished task: Tomorrow / pick date / Backlog / Archive. |
-| 3. **Reflect** | How did today go? | Free-text reflection (optional prompts). |
-| 4. **Close** | Done for today | Summary, copy as Markdown, closing moment. Marks `shutdownStatus = done`; saved to Daily highlights. |
+| 0 | **Reflect on yesterday** | Only if yesterday's shutdown was not done. Check off finished work, fix times. |
+| 1 | **Add tasks** — "What do you want to get done today?" | Rolled-over tasks pre-listed. Add, pull from backlog, or drag an objective in. Set channel and planned time. |
+| 2 | **Check the workload** — "What can wait?" | Work-context planned total vs threshold, with projected finish vs shutdown time. `D` defer, `Z` backlog, or drag to another day. |
+| 3 | **Finalize your plan** | Order tasks; optional timeboxing (drag or `X`); confirm shutdown time. |
+| 4 | **Daily plan** | Editable plan text and obstacles; Copy; **Get started**. Can be disabled permanently. |
 
-### 4.5 Weekly cycle
-- **Weekly planning** (first planning session of the week): last week's objectives → carry/drop → set this week's objectives → week board to spread tasks and link them → commit.
-- **Weekly review** (last shutdown of the week): completed count, time by channel (bar chart), planned vs actual accuracy, objective outcomes, reflection.
+On finishing: celebration, check on the Plan item, a completed "Daily planning" card added to the day (click to reopen the plan), default view opens.
+
+### 5.3 Working the day
+Today view → `F` focus on a task (or start a timer) → subtasks and notes → nudges (break reminder; "starts soon, shift focus?" five minutes before the next session) → `C` complete → focus moves to the next task → "Done for the day" screen when the list is empty.
+
+### 5.4 Daily shutdown
+Opens with `O`, the Shutdown item, or the reminder at shutdown time (snooze 30 minutes / dismiss until tomorrow).
+
+| Step | Screen | Logic |
+|---|---|---|
+| 1 | **Today in review** | Total time, worked on, didn't get to. |
+| 2 | **Highlights and reflection** | Star, reorder, remove highlights; mood; "Today was…". Side panel: time by channel, objectives, timeline. **Done for the day**. |
+| 3 | **Close** | Confirmation, end-of-day message, celebration; focus mode stops. Unfinished tasks are not moved. |
+
+### 5.5 Weekly planning and review
+| Ritual | Steps | Logic |
+|---|---|---|
+| **Planning** | 1 Objectives (add, attach tasks, carry over last week's, "What remains") → 2 Weekly plan text → **Done** | From Thursday on it plans next week. Adds a "Weekly planning" card. |
+| **Review** | 1 Objectives with time and progress → 2 What got done (per-day tasks, total logged, daily chart, time by channel) → 3 Summary → **Wrap up** | Monday–Wednesday it reviews last week. Step 1 skipped with no objectives. Can be combined into planning. |
 
 ---
 
-## 5. Business logic (the rules engine)
+## 6. Rules engine
 
-All of this lives in `src/domain/` as pure functions with unit tests.
+Pure functions in `src/domain/`, each unit-tested with an injectable clock.
 
-### 5.1 Rollover
-- Runs on app open and at local midnight if the app is open.
-- Every incomplete, non-archived task with `scheduledDate < today` moves to today; `rolloverCount += 1`.
-- Placement follows `rolloverPosition` (top or bottom), preserving relative order.
-- Completed tasks stay on the day they were completed.
-- Timeboxes for rolled tasks on past days are kept as history, not moved.
-- Recurring instances that were missed do **not** roll over (they would pile up); they are marked skipped.
-
-### 5.2 Auto-archive
-- When `rolloverCount > autoArchiveAfterRollovers` (default 4, configurable, can be off), the task is archived with reason `stale`.
-- A once-a-day notice lists what was archived, with one-click restore.
-
-### 5.3 Workload
-- Task planned time = sum of subtask estimates if any subtask has one, else the task's own estimate.
-- Day planned = sum over tasks scheduled that day (done and not done).
-- Bar states: under 85% neutral · 85–100% amber · over 100% red with "over by X".
-- Unestimated tasks show a count ("3 unestimated") rather than silently counting as zero.
-
-### 5.4 Timebox ↔ task sync
-- Scheduling creates a block of `plannedMin` (or `defaultBlockMin` if unestimated).
-- Resizing the only block of a task updates `plannedMin`; with multiple blocks, planned time is left alone.
-- Moving a task to another day removes its future blocks on the old day.
-- Completing a task marks its blocks done; deleting a task deletes its blocks.
-- Auto-schedule: earliest gap ≥ needed duration, after "now" (rounded up to 5 min), within working hours, avoiding events and other blocks; falls back to splitting only if asked.
-
-### 5.5 Ritual triggers
-```
-planning due   = planStatus(target day) != done
-                 AND now >= planningTime
-                 AND (planningFor == today ? target = today : target = tomorrow)
-shutdown due   = shutdownStatus(today) != done AND now >= shutdownTime
-weekly plan    = first daily planning of the week AND week.planStatus != done
-weekly review  = last working day's shutdown AND week.reviewStatus != done
-```
-- Due rituals show a full-screen prompt on open with **Start**, **Later** (snooze 1h), **Skip today**.
-- Never interrupts an active timer or focus session — the prompt waits.
-
-### 5.6 Timer
-- One running entry globally; starting another stops the first.
-- Running state survives reload (computed from `start`, not ticked).
-- Entries over a sanity limit (e.g. 4h with no activity) prompt "Still working?" and offer to trim.
-
-### 5.7 Recurrence
-- Instances are materialised on a rolling 30-day window on app open.
-- Instance edits fork from the template; "this and following" splits the rule.
-- Completing an instance never affects others.
-
-### 5.8 Ordering and undo
-- Fractional index strings per list (day, backlog folder, subtasks) — reorders write one row.
-- Every command returns its inverse; undo stack of 50, cleared on reload.
+| Rule | Behaviour | Default |
+|---|---|---|
+| **Rollover** | At midnight (or on next open), unfinished tasks move to the next day; `rolloverDays += 1`; placed at top or bottom. | Position is a setting |
+| **Partial credit** | If a subtask was checked or time was tracked on a day, a faded copy without a checkbox stays on that day. | On |
+| **Auto-archive** | Archived when rolled over more than N consecutive days with no activity; activity resets the count. Note at the foot of the list; badge on the archive icon. Restore by giving it a day. | N = 4; 1–14 or off |
+| **Trash** | Soft delete, purged after 7 days. | 7 days |
+| **Workload** | Sum of planned time for work-context tasks vs threshold; yellow when close, red when over. Counter cycles time remaining / work time remaining / actual vs planned. | Threshold from first run |
+| **Sessions** | Length = remaining planned time, else default. Planned time = total of sessions; editing either updates the other. 5-minute snapping. | 30 min |
+| **Auto-schedule** | Next free slot that day inside working hours, never in the past, avoiding events and sessions, honouring the gap. ≤ 1 h splits only if necessary; longer splits into at most 3 blocks; `Shift X` never splits. | 09:00–17:00, no gap |
+| **No room** | Offer: Schedule anyway · Schedule another day (up to a month ahead) · Defer · Cancel. | — |
+| **Reschedule on conflict** | Dropping a session on another moves displaced ones to the next free time (split if needed; unpinned if they don't fit). Undo offered. `Shift` while dropping skips it. | On |
+| **Early finish** | Session ends at completion time; later back-to-back sessions move forward until the first gap ≥ 30 min. Completing before a session starts removes it. | On |
+| **Moving tasks** | Later day: future sessions removed. Backlog: upcoming sessions removed, folder kept. Scheduling from backlog drops the folder. | — |
+| **Timer** | One at a time. Running state derived from the entry's start, so it survives reload. No future entries. | Long-timer alert 4 h |
+| **Recurring** | Unedited instance rolls over until it meets the next instance, then is removed. Editing title, notes, subtasks, time or channel makes it unique and it stays. | — |
+| **Priority** | Daily priority resets to Normal each day unless the level is set to persist. | Reset |
+| **Ritual timing** | Planning time before 15:00 plans today; 15:00 or later plans tomorrow. Same time as shutdown → shutdown first. Weekly planning plans next week from Thursday; review covers last week Mon–Wed. Prompts never interrupt a running timer. | — |
 
 ---
 
-## 6. UI and UX specification
+## 7. UI and motion
 
-### 6.1 App shell
-```
-┌──────────┬──────────────────────────────────────────────┬──────────────┬───┐
-│ Sidebar  │ Top bar: ‹ Today ›  date · view switch · filter │              │ R │
-│          ├──────────────────────────────────────────────┤  Right panel  │ a │
-│ Home     │                                              │  (Calendar /  │ i │
-│ My Day   │   Mon 16      Tue 17      Wed 18     Thu 19  │   Backlog /   │ l │
-│ Calendar │   ▓▓▓░ 5h/6h  ▓░░░ 2h     ░░░░       ░░░░    │   Objectives /│   │
-│ ──────── │   + Add task  + Add task  + Add task         │   Archive)    │   │
-│ Rituals  │   ┌───────┐   ┌───────┐                      │               │   │
-│ Backlog  │   │ card  │   │ card  │                      │               │   │
-│ Archive  │   └───────┘   └───────┘                      │               │   │
-│ ──────── │                                              │               │   │
-│ Channels │                                              │               │   │
-├──────────┴──────────────────────────────────────────────┴──────────────┴───┤
-│ Focus bar (only while a timer runs): task · elapsed · pause · complete      │
-└────────────────────────────────────────────────────────────────────────────┘
-```
-- Sidebar collapses to icons; right panel collapses to the rail.
-- Modal state, selected date, and open panel live in the URL, so back/forward and reload behave.
+### 7.1 Shell
+Left panel (Today, This week, Board, Calendar, Focus · Daily rituals: Plan, Shutdown, Highlights · Weekly rituals: Plan, Review · Backlog with folders) — main view with date controls, Back to today and Filter — right panel — icon rail. `<` and `>` hide the panels; the left one slides back when the cursor touches the edge. Rituals show "Start" when due and a check when done.
 
-### 6.2 Design tokens (starting point, tuned in Phase 7)
-| Token group | Light | Dark |
+### 7.2 Design tokens (starting point; calibrated in Phase 7)
+| Group | Light | Dark |
 |---|---|---|
-| Canvas | warm off-white | near-black, slightly warm |
-| Surface (cards, panels) | white | raised charcoal |
-| Border | 1px soft neutral | 1px low-contrast neutral |
-| Text | near-black / mid-grey / light-grey (3 levels) | off-white / grey / dim |
-| Accent | one restrained hue for primary actions and today | same hue, lifted |
-| Success | soft green (completion) | same, lifted |
-| Warning / over | amber / muted red (workload) | same, lifted |
-| Channel colours | 12-step pastel set, tag = tinted background + darker text | 12-step, tuned for dark |
+| Canvas / surface | soft off-white / white | near-black / raised charcoal |
+| Border | 1px soft neutral | 1px low-contrast |
+| Text | three levels | three levels |
+| Accent | one restrained hue for primary actions and today | lifted |
+| Status | green (done), yellow (near threshold), red (over) | lifted |
+| Channels | 12 pastel tags | 12, tuned for dark |
 
-- **Type:** one humanist sans (Inter or similar), 13–14px base UI, 15px task titles, generous line height; rituals use larger, lighter headings.
-- **Shape:** 8px card radius, 6px controls, 12px modals. Shadows are faint and layered; depth comes mostly from borders and background steps.
-- **Density:** 280px columns, 8px card gap, 12px card padding.
+Type: one humanist sans, 13–14px UI, 15px task titles. Shape: 8px cards, 6px controls, 12px modals; faint layered shadows. Columns 280px.
 
-### 6.3 Motion spec
+### 7.3 Motion
 | Interaction | Behaviour | Timing |
 |---|---|---|
-| Complete task | Circle fills with check draw; title fades to muted with strikethrough; card settles to the done group via layout animation | 250ms, ease-out |
-| Add task | Card grows in from the input, neighbours slide | 180ms spring |
-| Drag lift | Scale 1.02, shadow deepens, slight tilt; source slot leaves a tinted placeholder | 120ms |
-| Drop | Card springs into slot; neighbours reflow | spring, ~300ms settle |
-| Drag onto timeline | Ghost block snaps in 5-min steps, time label follows | immediate |
-| Task modal | Fade + scale 0.98→1 from the card; backdrop dims | 160ms in / 120ms out |
-| Right panel / sidebar | Width slide, content fades | 200ms |
-| Ritual steps | Outgoing slides left and fades; incoming slides in; progress dot fills | 280ms |
-| Workload bar | Width and colour tween on change | 300ms |
-| Day navigation | Columns scroll with momentum; "Today" button springs back | 400ms |
-| Shutdown close | Quiet celebratory moment (original illustration + soft fade) | ~1.2s, skippable |
-| Toasts | Slide up from bottom-left, auto-dismiss 5s | 180ms |
+| Complete task | Check draws, title mutes and strikes, card settles | 250ms ease-out |
+| Add task | Card grows in, neighbours slide | 180ms spring |
+| Drag | Lift (scale 1.02, deeper shadow), tinted placeholder, spring on drop | 120ms / ~300ms |
+| Drag to calendar | Ghost session snaps in 5-minute steps with a live time label | immediate |
+| Task page | Fade + scale from 0.98; backdrop dims | 160ms in, 120ms out |
+| Panels | Width slide, content fade | 200ms |
+| Ritual steps | Slide and crossfade; progress segment fills | 280ms |
+| Workload counter | Width and colour tween | 300ms |
+| Celebrations | Confetti, sparkles or emoji on planning done, shutdown done, all tasks done | ~1.2s, skippable |
+| Toasts | Slide up, 5s, with Undo | 180ms |
 
-All motion respects `prefers-reduced-motion` (fades only).
+`prefers-reduced-motion` reduces everything to fades.
 
-### 6.4 States every surface must handle
-Empty (first-time and cleared), loading (skeleton, rare since data is local), over-capacity, overdue, running timer, drag-in-progress, offline (no change — it's local), narrow viewport.
-
-### 6.5 Responsive
-- ≥1200px: full shell. 900–1200px: right panel overlays. <900px: single day column + bottom tab bar; calendar and backlog become sheets. Installable as a PWA on phone.
+### 7.4 Responsive
+≥1200px full shell · 900–1200px right panel overlays · below 1024px the objectives column hides · phone width: single day list; rituals stay desktop-only, as in Sunsama.
 
 ---
 
-## 7. Keyboard map
+## 8. Keyboard map
+
+Sunsama's bindings, minus integration panels. `Ctrl` on Windows.
 
 | Area | Keys |
 |---|---|
-| Global | `Cmd/Ctrl+K` palette · `A` add task · `Cmd/Ctrl+Z` undo · `?` shortcut sheet · `/` search |
-| Navigate | `←/→` previous/next day · `T` today · `1/2/3` Board / My Day / Calendar · `]` toggle right panel · `[` toggle sidebar |
-| Selected task | `Enter` open · `C` complete · `F` focus · `Space` start/stop timer · `E` planned time · `#` channel · `D` due date · `X` auto-schedule · `M` move to date · `B` to backlog · `Shift+A` archive · `Cmd/Ctrl+D` duplicate · `Backspace` delete |
-| Reorder | `Alt+↑/↓` within day · `Alt+←/→` to adjacent day |
-| Rituals | `Enter` next · `Shift+Enter` back · `Esc` save and exit |
-
-Remappable in settings. Where I can confirm Sunsama's actual binding for an action, I'll default to it.
+| **Go to** | `T` Today · `N` This week · `H` Board · `J` Calendar · `B` Backlog · `P` Planning · `O` Shutdown · `Shift Space` today · `Shift ←/→` day · `Shift F` filter · `Ctrl K` palette · `Ctrl F` search · `Shift L` dark mode · `<` `>` panels · `?` all shortcuts |
+| **Right panel** | `Shift C` calendar · `Shift T` tasks · `Shift R` objectives · `Shift B` backlog · `Shift A` archive |
+| **Add** | `A` add · `~` time · `#` channel · `!` priority · `@` date · `$` objective · `>` subtask of · `<` folder · `Enter` create · `Ctrl Enter` create and open · `Ctrl Shift ↑/↓` create at top/bottom |
+| **Select** | `↑/↓` task · `Shift ↑/↓` first/last · `←/→` previous/next day |
+| **On a task** | `C` complete · `Space` timer · `F` focus · `K` break · `W` planned · `E` actual · `Q` channel · `!` priority · `R` objective · `@` date · `V` subtask · `Ctrl Enter` open · `Ctrl D` duplicate · `Ctrl ⌫` delete · `Ctrl Z` undo |
+| **Schedule and move** | `X` auto-schedule · `Shift X` one block · `Ctrl X` remove from calendar · `S` today · `D` snooze a day · `Z` backlog · `Shift Z` top of backlog · `Ctrl ↑/↓` move · `Ctrl Shift ↑/↓` top/bottom · `Ctrl S` sort by start time |
+| **Rituals** | `←/→` previous/next step |
+| **Notes** | `/` format menu · `Ctrl B/I/U` · Markdown shortcuts |
+| **Windows app** | `Ctrl Shift A` add from anywhere · `Ctrl Shift Space` timer · `Ctrl Shift F` focus bar |
 
 ---
 
-## 8. Routes
+## 9. Routes
 
 | Route | Screen |
 |---|---|
-| `/welcome`, `/onboarding/:step` | First launch |
-| `/board?date=` | Board (home) |
-| `/day/:date` | My Day |
-| `/calendar?view=day\|3day\|week&date=` | Calendar |
-| `/focus/:taskId` | Focus mode |
-| `/plan/:date/:step` | Daily planning |
-| `/shutdown/:date/:step` | Daily shutdown |
-| `/week/:weekStart/plan`, `/week/:weekStart/review` | Weekly rituals |
-| `/backlog`, `/archive`, `/objectives`, `/highlights` | Lists |
+| `/welcome`, `/setup/:step` | First run |
+| `/today?date=` | Today |
+| `/week?start=` | This week |
+| `/board?date=` | Board |
+| `/calendar?view=&date=` | Calendar |
+| `/focus/:taskId` | Focus |
+| `/plan/:date/:step`, `/shutdown/:date/:step` | Daily rituals |
+| `/weekly/plan/:step`, `/weekly/review/:step` | Weekly rituals |
+| `/highlights`, `/backlog` | Lists |
 | `/settings/:section` | Settings |
-| `?task=:id` (any route) | Task modal overlay |
+| `?task=:id` on any route | Task page overlay |
 
 ---
 
-## 9. Build phases
-
-Each phase ends in something usable and is committed separately.
+## 10. Build phases
 
 | Phase | Delivers | Done when |
 |---|---|---|
-| **0. Foundation** | Vite scaffold, tokens, UI primitives, Dexie schema, command layer + undo, app shell, routing | Shell renders in light/dark; a task can be written and read back. |
-| **1. Board and tasks** | Day columns, infinite scroll, inline add with tokens, cards, drag reorder/move, task modal, subtasks, notes, channels + filter | A full day can be planned by hand on the board. |
-| **2. Calendar and timeboxing** | Timeline grid, local events, drag-to-schedule, move/resize, auto-schedule, right panel, calendar view, workload bars | Tasks and blocks stay in sync through every move. |
-| **3. Timer and focus** | Time entries, focus bar, focus mode, planned vs actual, manual time edit | Actual time survives reload and shows everywhere. |
-| **4. Daily rituals** | Rollover + auto-archive engine, daily planning flow, daily shutdown flow, triggers, daily highlights | A full day cycle runs: prompt → plan → work → shutdown. |
-| **5. Backlog, recurrence, weekly** | Backlog folders, archive view, recurring tasks, objectives, weekly planning, weekly review with charts | A full week cycle runs. |
-| **6. Onboarding and settings** | Onboarding flow wired to settings, guided first plan, getting-started checklist, all settings, notifications, export/import | Fresh profile → onboarding → planned first day with no dead ends. |
-| **7. Polish** | Command palette, full keymap, motion pass, by-eye visual calibration, empty states, responsive + PWA, reduced-motion, accessibility pass | Side-by-side with reference screenshots reads as the same kind of product. |
+| **0. Foundation** | Scaffold, tokens, primitives, Dexie schema, command layer + undo, platform interface, shell, routing | Shell renders light/dark; a task round-trips through storage. |
+| **1. Tasks and board** | Add-task window with typing shortcuts, cards, task page, subtasks, notes, channels/contexts, filter, board, Today view, drag reorder and move | A day can be planned by hand. |
+| **2. Calendar and timeboxing** | Time grid, events, sessions, drag/resize, auto-schedule, reschedule rules, right panel, calendar view, workload counter | Tasks and sessions stay in sync through every move. |
+| **3. Timer and focus** | Time entries and editor, focus mode, focus bar, breaks, sounds | Actual time survives reload and shows everywhere. |
+| **4. Daily rituals** | Rollover, partial credit, auto-archive, trash, daily planning, daily shutdown, highlights, ritual prompts, celebrations | A full day cycle runs with a mocked clock. |
+| **5. Weekly and backlog** | Objectives, This week, weekly planning and review with charts, backlog buckets and folders, priority, recurring series | A full week cycle runs. |
+| **6. First run and settings** | Setup screens, guided planning, setup task, all settings, export/import | Fresh profile → planned first day, no dead ends. |
+| **7. Polish** | Command palette, full keymap, motion pass, visual calibration, empty states, responsive, accessibility | Reads as the same kind of product next to the reference. |
+| **8. Windows app** | Tauri shell, tray, floating focus bar, global shortcuts, native notifications, launch at login, backup file, CI installer build | Installer from a GitHub release runs the full cycle on Windows. |
+| **Later** | Hosted sync, parallel tasks, merge tasks, auto-sort | — |
 
-### Verification throughout
-- **Unit:** every rule in §5 (rollover edge cases across midnight/DST, workload, recurrence splits, auto-schedule gaps).
-- **End-to-end (Playwright):** onboarding → first plan; add/estimate/schedule/complete; rollover with a mocked clock; shutdown; weekly cycle; export → wipe → import.
-- **Visual:** screenshot set per phase in light and dark at desktop and phone widths.
-
----
-
-## 10. Data safety
-- Everything lives in the browser's IndexedDB on one device.
-- One-click JSON export/import in settings; automatic rolling local snapshot (last 7 days).
-- Clearing site data deletes everything — the app says so in settings and nudges a backup weekly.
+**Verification throughout:** unit tests for every rule in §6; Playwright runs for first run, a day cycle, rollover and archive across midnight, a week cycle, and export → wipe → import; screenshots per phase in light and dark.
 
 ---
 
@@ -376,18 +325,19 @@ Each phase ends in something usable and is committed separately.
 
 | Risk | Mitigation |
 |---|---|
-| Drag feel across board + timeline is the hardest part to get right | Build it in Phases 1–2 before anything depends on it; tune with real use. |
-| Visual fidelity without access to exact values | Token-driven styling + a dedicated calibration pass against screenshots. |
-| Date logic bugs (midnight, DST, week boundaries) | Dates stored as local `YYYY-MM-DD` strings, minutes-of-day for blocks; clock is injectable for tests. |
-| Single-device data loss | Export/import and snapshots from Phase 6; optional sync later. |
-| Scope size | Phases are independently shippable; the day cycle (0–4) is the core, the rest layers on. |
+| Drag feel across lists and calendar | Built in Phases 1–2, before anything depends on it. |
+| Visual fidelity without exact values | Token-driven styling; calibration pass against screenshots or recordings. |
+| Date logic (midnight, DST, week boundaries, the 15:00 line) | Local `YYYY-MM-DD` dates, minutes-of-day for sessions, injectable clock in tests. |
+| Data loss on one device | Export/import from Phase 6; automatic backup file on Windows. |
+| Windows shell can't be run in this environment | Built and smoke-tested in CI on a Windows runner; first real run is on your machine. |
 
 ---
 
-## 12. Decisions for you
+## 12. Open items
 
-| # | Decision | Recommendation |
+| # | Item | Status |
 |---|---|---|
-| 1 | **Where data lives:** local-only in the browser, or a hosted backend with login and multi-device sync | **Local-only now.** Fastest, free, offline. The command layer keeps a sync backend (e.g. Supabase) addable later without a rewrite. |
-| 2 | **Name** | Keep "Meridian" as a placeholder; it's one constant. |
-| 3 | **Reference material** | If you have a Sunsama account or trial, screenshots or a short screen recording of the board, task modal, planning and shutdown flows will make the calibration pass far more accurate than working from memory. |
+| 1 | Data storage | **Decided:** local now, hosted later. |
+| 2 | Name | **Decided:** Life Of Pi. |
+| 3 | Platform | **Decided:** web app first, Windows app in Phase 8. |
+| 4 | Visual reference | Screenshots or a short recording of the Today view, board, task page, planning and shutdown would sharpen the calibration pass. Not needed to start. |
