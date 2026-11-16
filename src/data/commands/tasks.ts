@@ -1,9 +1,11 @@
-import { now, today } from '@/domain/clock';
+import { now, nowMinutes, today } from '@/domain/clock';
 import { compareKeys, keyAtEdge, safeKeyBetween } from '@/domain/ordering';
 import { shiftDay } from '@/domain/dates';
+import { pullForward, snap, SNAP_MIN } from '@/domain/scheduling';
 import { db, getSettings } from '../db';
 import { BACKLOG, type DailyPriority, type Id, type ListEdge, type Task, type TaskDay } from '../types';
 import { recordUndo } from '../undo';
+import { withSnapshot } from './snapshot';
 
 export interface NewTask {
   title: string;
@@ -85,24 +87,45 @@ export function renameTask(id: Id, title: string): Promise<void> {
   return patchTask(id, { title: next, edited: true }, 'Rename task');
 }
 
-export function setTaskCompleted(id: Id, completed: boolean): Promise<void> {
-  return patchTask(
-    id,
-    completed
-      ? { completedAt: now(), completedDay: today(), lastActivityDay: today() }
-      : { completedAt: null, completedDay: null },
-    completed ? 'Complete task' : 'Reopen task',
-  );
+/**
+ * Completes or reopens a task. Completing one today also tidies its
+ * calendar: a session that has not started is removed, a session in
+ * progress ends now, and (if the setting is on) the sessions that followed
+ * back to back move forward.
+ */
+export async function setTaskCompleted(id: Id, completed: boolean): Promise<void> {
+  if (!completed) return patchTask(id, { completedAt: null, completedDay: null }, 'Reopen task');
+
+  const day = today();
+  const settings = await getSettings();
+  await withSnapshot('Complete task', { taskIds: [id], days: [day] }, async () => {
+    await db.tasks.update(id, { completedAt: now(), completedDay: day, lastActivityDay: day, updatedAt: now() });
+
+    const time = nowMinutes();
+    const onDay = await db.sessions.where('day').equals(day).toArray();
+    const owners = await db.tasks.bulkGet(onDay.map((s) => s.taskId));
+    const laterOpen = onDay.filter((s, i) => s.taskId !== id && owners[i]?.state === 'active' && owners[i]?.completedAt === null);
+    const events = (await db.events.where('day').equals(day).toArray()).filter((e) => e.blocksTime);
+
+    for (const session of onDay.filter((s) => s.taskId === id)) {
+      if (time <= session.startMin) {
+        await db.sessions.delete(session.id);
+      } else if (time < session.endMin) {
+        const endMin = Math.max(session.startMin + SNAP_MIN, snap(time));
+        await db.sessions.update(session.id, { endMin });
+        if (settings.rescheduleOnEarlyFinish) {
+          for (const move of pullForward(session.endMin, endMin, laterOpen, events)) {
+            await db.sessions.update(move.id, { startMin: move.startMin, endMin: move.endMin });
+          }
+        }
+      }
+    }
+  });
 }
 
 /** Soft delete. The task sits in the trash and can be restored for a week. */
 export function deleteTask(id: Id): Promise<void> {
   return patchTask(id, { state: 'deleted', stateChangedAt: now() }, 'Task deleted', true);
-}
-
-/** A change of day is a deliberate act, so it clears the rollover count. */
-function dayPatch(task: Task, day: TaskDay, order: string): Partial<Task> {
-  return task.day === day ? { order } : { day, order, rolloverDays: 0 };
 }
 
 async function requireTask(id: Id): Promise<Task> {
@@ -111,17 +134,36 @@ async function requireTask(id: Id): Promise<Task> {
   return task;
 }
 
+/**
+ * Puts a task at a position in a list. Changing its day is a deliberate
+ * act, so it clears the rollover count, and it takes the task's upcoming
+ * calendar sessions with it: sessions still ahead on other days are removed,
+ * while sessions already in the past stay as a record.
+ */
+async function reposition(task: Task, day: TaskDay, order: string): Promise<void> {
+  if (task.day === day) return patchTask(task.id, { order }, 'Move task');
+
+  await withSnapshot('Move task', { taskIds: [task.id] }, async () => {
+    await db.tasks.update(task.id, { day, order, rolloverDays: 0, updatedAt: now() });
+    const current = today();
+    const time = nowMinutes();
+    const upcoming = (await db.sessions.where('taskId').equals(task.id).toArray()).filter(
+      (s) => s.day !== day && (s.day > current || (s.day === current && s.endMin > time)),
+    );
+    await db.sessions.bulkDelete(upcoming.map((s) => s.id));
+  });
+}
+
 /** Moves a task to the top or bottom of a day (or the backlog). */
 export async function moveTask(id: Id, day: TaskDay, position: ListEdge = 'top'): Promise<void> {
   const task = await requireTask(id);
   const keys = (await orderKeysFor(day)).filter((k) => !(task.day === day && k === task.order));
-  return patchTask(id, dayPatch(task, day, keyAtEdge(keys, position)), 'Move task');
+  return reposition(task, day, keyAtEdge(keys, position));
 }
 
 /** Drops a task between two neighbours, given their order keys (null at either end). */
 export async function placeTask(id: Id, day: TaskDay, before: string | null, after: string | null): Promise<void> {
-  const task = await requireTask(id);
-  return patchTask(id, dayPatch(task, day, safeKeyBetween(before, after)), 'Move task');
+  return reposition(await requireTask(id), day, safeKeyBetween(before, after));
 }
 
 /** Moves a task one place up or down within its list. Does nothing at the edge. */
@@ -147,8 +189,23 @@ export async function snoozeTask(id: Id): Promise<void> {
   return moveTask(id, shiftDay(from, 1));
 }
 
-export function setPlannedTime(id: Id, plannedMin: number | null): Promise<void> {
-  return patchTask(id, { plannedMin, edited: true }, 'Set planned time');
+/**
+ * Sets the estimate. If the task is on the calendar, its last session grows
+ * or shrinks so the sessions still add up to the planned time.
+ */
+export async function setPlannedTime(id: Id, plannedMin: number | null): Promise<void> {
+  const sessions = (await db.sessions.where('taskId').equals(id).toArray()).sort(
+    (a, b) => (a.day === b.day ? a.startMin - b.startMin : a.day < b.day ? -1 : 1),
+  );
+  if (plannedMin === null || sessions.length === 0) return patchTask(id, { plannedMin, edited: true }, 'Set planned time');
+
+  await withSnapshot('Set planned time', { taskIds: [id] }, async () => {
+    await db.tasks.update(id, { plannedMin, edited: true, updatedAt: now() });
+    const last = sessions[sessions.length - 1];
+    const scheduled = sessions.reduce((sum, s) => sum + (s.endMin - s.startMin), 0);
+    const endMin = Math.min(last.endMin + (plannedMin - scheduled), 24 * 60);
+    if (endMin - last.startMin >= SNAP_MIN) await db.sessions.update(last.id, { endMin });
+  });
 }
 
 export function setChannel(id: Id, channelId: Id | null): Promise<void> {

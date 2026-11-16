@@ -22,3 +22,9 @@ export function resetClock(): void {
 export function today(): string {
   return toDay(new Date(now()));
 }
+
+/** The current local time of day, in minutes after midnight. */
+export function nowMinutes(): number {
+  const d = new Date(now());
+  return d.getHours() * 60 + d.getMinutes();
+}

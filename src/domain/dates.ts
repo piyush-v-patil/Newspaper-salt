@@ -33,3 +33,17 @@ export function formatMinutes(min: number): string {
   const m = Math.max(0, Math.round(min));
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 }
+
+/** 0 for Sunday through 6 for Saturday. */
+export function weekdayOf(day: Day): number {
+  return fromDay(day).getDay();
+}
+
+/** A time of day, e.g. 570 -> "09:30" or "9:30 AM". */
+export function formatClock(min: number, style: '12h' | '24h' = '24h'): string {
+  const m = ((Math.round(min) % 1440) + 1440) % 1440;
+  const hours = Math.floor(m / 60);
+  const minutes = String(m % 60).padStart(2, '0');
+  if (style === '24h') return `${String(hours).padStart(2, '0')}:${minutes}`;
+  return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
+}
