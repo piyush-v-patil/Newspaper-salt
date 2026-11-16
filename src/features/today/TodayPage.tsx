@@ -1,76 +1,68 @@
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useUi } from '@/app/uiStore';
 import { useTasksForDay } from '@/data/queries';
+import { useChannelMap } from '@/data/ReferenceData';
 import { today } from '@/domain/clock';
-import { longDayLabel, shiftDay, type Day } from '@/domain/dates';
-import { AddTask } from './AddTask';
-import { TaskRow } from './TaskRow';
+import { formatMinutes, longDayLabel, shiftDay, type Day } from '@/domain/dates';
+import { matchesFilter } from '@/domain/filter';
+import { ViewHeader } from '@/features/common/ViewHeader';
+import { useDayKeys } from '@/features/common/useDayKeys';
+import { AddTaskRow } from '@/features/task/AddTaskRow';
+import { TaskDataProvider } from '@/features/task/TaskData';
+import { TaskDnd, TaskList } from '@/features/task/TaskDnd';
 
 export function TodayPage({ date }: { date?: Day }) {
   const navigate = useNavigate();
   const current = today();
   const day = date ?? current;
-  const tasks = useTasksForDay(day);
+  const all = useTasksForDay(day);
+  const filter = useUi((s) => s.filter);
+  const setFocusedDay = useUi((s) => s.setFocusedDay);
+  const channels = useChannelMap();
 
-  const go = (next: Day) => void navigate({ to: '/today', search: next === current ? {} : { date: next } });
+  const tasks = useMemo(() => all?.filter((t) => matchesFilter(t, filter, channels)), [all, filter, channels]);
+  const lists = useMemo(() => ({ [day]: tasks ?? [] }), [day, tasks]);
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (!e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
-      const target = e.target as HTMLElement;
-      if (target.isContentEditable || ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
-      if (e.key === 'ArrowLeft') go(shiftDay(day, -1));
-      else if (e.key === 'ArrowRight') go(shiftDay(day, 1));
-      else if (e.key === ' ') {
-        e.preventDefault();
-        go(current);
-      }
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  });
+    setFocusedDay(day);
+    return () => setFocusedDay(null);
+  }, [day, setFocusedDay]);
 
-  const open = tasks?.filter((t) => t.completedAt === null).length ?? 0;
+  const go = (next: Day) => void navigate({ to: '/today', search: next === current ? {} : { date: next } });
+  useDayKeys({ previous: () => go(shiftDay(day, -1)), next: () => go(shiftDay(day, 1)), today: () => go(current) });
+
+  const open = tasks?.filter((t) => t.completedAt === null) ?? [];
+  const remaining = open.reduce((sum, t) => sum + (t.plannedMin ?? 0), 0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-6">
-        <div className="flex items-center">
-          <button type="button" aria-label="Previous day" onClick={() => go(shiftDay(day, -1))} className="grid h-7 w-7 place-items-center rounded text-ink-2 hover:bg-hover">
-            <ChevronLeft size={16} />
-          </button>
-          <button type="button" aria-label="Next day" onClick={() => go(shiftDay(day, 1))} className="grid h-7 w-7 place-items-center rounded text-ink-2 hover:bg-hover">
-            <ChevronRight size={16} />
-          </button>
-        </div>
-        <h1 className="text-[16px] font-semibold tracking-tight">{longDayLabel(day)}</h1>
-        {day !== current && (
-          <button type="button" onClick={() => go(current)} className="ml-2 rounded-md border border-line px-2.5 py-1 text-[12.5px] text-ink-2 hover:bg-hover">
-            Back to today
-          </button>
-        )}
-      </header>
-
+      <ViewHeader
+        title={longDayLabel(day)}
+        onPrevious={() => go(shiftDay(day, -1))}
+        onNext={() => go(shiftDay(day, 1))}
+        onBackToToday={day !== current ? () => go(current) : undefined}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
         <section aria-label="Tasks" className="mx-auto flex w-full max-w-[460px] flex-col gap-2">
           <div className="flex items-baseline justify-between pb-1">
             <h2 className="text-[13px] font-semibold">{day === current ? 'Today' : 'Tasks'}</h2>
             {tasks && tasks.length > 0 && (
               <span className="tabular text-[12px] text-ink-3">
-                {open === 0 ? 'All done' : `${open} to do`}
+                {open.length === 0 ? 'All done' : remaining > 0 ? `${formatMinutes(remaining)} left` : `${open.length} to do`}
               </span>
             )}
           </div>
-          <AddTask day={day} />
+          <AddTaskRow day={day} />
           {tasks && tasks.length === 0 && (
             <p className="px-1 pt-3 text-[13px] text-ink-3">
-              Nothing planned for this day yet. Press <span className="font-medium text-ink-2">A</span> to add your first task.
+              {filter ? 'No tasks match this filter on this day.' : 'Nothing planned for this day yet.'} Press{' '}
+              <span className="font-medium text-ink-2">A</span> to add a task.
             </p>
           )}
-          <ul className="flex flex-col gap-2">
-            {tasks?.map((task) => <TaskRow key={task.id} task={task} />)}
-          </ul>
+          <TaskDataProvider tasks={tasks ?? []}>
+            <TaskDnd lists={lists}>{(ordered) => <TaskList listId={day} tasks={ordered[day] ?? []} />}</TaskDnd>
+          </TaskDataProvider>
         </section>
       </div>
     </div>

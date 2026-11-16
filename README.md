@@ -33,4 +33,9 @@ npm run e2e        # browser tests against a production build
 
 ## Status
 
-Phase 0 of 8 is done: project foundation, storage, undo, app shell, light and dark themes. Views other than Today are placeholders until their phase.
+Phases 0 and 1 of 8 are done.
+
+- **Phase 0:** project foundation, local storage, undo, app shell, light and dark themes.
+- **Phase 1:** tasks and the board. Add-task window with typing shortcuts (`~` time, `#` channel, `@` date, `!` priority), task cards, task page with subtasks and rich-text notes, channels and filter, the Today view, the day-column board with drag and drop, and the task keyboard shortcuts.
+
+Calendar, Focus, the rituals, Backlog and Settings are placeholders until their phase.

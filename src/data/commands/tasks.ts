@@ -1,7 +1,8 @@
 import { now, today } from '@/domain/clock';
-import { compareKeys, keyAtEdge } from '@/domain/ordering';
+import { compareKeys, keyAtEdge, safeKeyBetween } from '@/domain/ordering';
+import { shiftDay } from '@/domain/dates';
 import { db, getSettings } from '../db';
-import type { Id, ListEdge, Task, TaskDay } from '../types';
+import { BACKLOG, type DailyPriority, type Id, type ListEdge, type Task, type TaskDay } from '../types';
 import { recordUndo } from '../undo';
 
 export interface NewTask {
@@ -9,6 +10,7 @@ export interface NewTask {
   day?: TaskDay;
   channelId?: Id | null;
   plannedMin?: number | null;
+  dailyPriority?: DailyPriority;
   position?: ListEdge;
 }
 
@@ -31,7 +33,7 @@ export async function createTask(input: NewTask): Promise<Task> {
     day,
     order: keyAtEdge(await orderKeysFor(day), input.position ?? settings.newTaskPosition),
     plannedMin: input.plannedMin ?? null,
-    dailyPriority: 'normal',
+    dailyPriority: input.dailyPriority ?? 'normal',
     backlogPriority: 'none',
     backlogBucket: 'someday',
     backlogFolderId: null,
@@ -98,7 +100,107 @@ export function deleteTask(id: Id): Promise<void> {
   return patchTask(id, { state: 'deleted', stateChangedAt: now() }, 'Task deleted', true);
 }
 
+/** A change of day is a deliberate act, so it clears the rollover count. */
+function dayPatch(task: Task, day: TaskDay, order: string): Partial<Task> {
+  return task.day === day ? { order } : { day, order, rolloverDays: 0 };
+}
+
+async function requireTask(id: Id): Promise<Task> {
+  const task = await db.tasks.get(id);
+  if (!task) throw new Error('That task no longer exists.');
+  return task;
+}
+
+/** Moves a task to the top or bottom of a day (or the backlog). */
 export async function moveTask(id: Id, day: TaskDay, position: ListEdge = 'top'): Promise<void> {
-  const order = keyAtEdge(await orderKeysFor(day), position);
-  return patchTask(id, { day, order }, 'Move task');
+  const task = await requireTask(id);
+  const keys = (await orderKeysFor(day)).filter((k) => !(task.day === day && k === task.order));
+  return patchTask(id, dayPatch(task, day, keyAtEdge(keys, position)), 'Move task');
+}
+
+/** Drops a task between two neighbours, given their order keys (null at either end). */
+export async function placeTask(id: Id, day: TaskDay, before: string | null, after: string | null): Promise<void> {
+  const task = await requireTask(id);
+  return patchTask(id, dayPatch(task, day, safeKeyBetween(before, after)), 'Move task');
+}
+
+/** Moves a task one place up or down within its list. Does nothing at the edge. */
+export async function nudgeTask(id: Id, direction: 'up' | 'down'): Promise<void> {
+  const task = await requireTask(id);
+  const list = (await db.tasks.where('[state+day]').equals(['active', task.day]).toArray()).sort((a, b) =>
+    compareKeys(a.order, b.order),
+  );
+  const i = list.findIndex((t) => t.id === id);
+  const target = direction === 'up' ? i - 1 : i + 1;
+  if (i < 0 || target < 0 || target >= list.length) return;
+  const [before, after] =
+    direction === 'up'
+      ? [list[target - 1]?.order ?? null, list[target].order]
+      : [list[target].order, list[target + 1]?.order ?? null];
+  return patchTask(id, { order: safeKeyBetween(before, after) }, 'Move task');
+}
+
+/** Pushes a task to the day after the one it is on (tomorrow, if it is in the backlog). */
+export async function snoozeTask(id: Id): Promise<void> {
+  const task = await requireTask(id);
+  const from = task.day === BACKLOG ? today() : task.day;
+  return moveTask(id, shiftDay(from, 1));
+}
+
+export function setPlannedTime(id: Id, plannedMin: number | null): Promise<void> {
+  return patchTask(id, { plannedMin, edited: true }, 'Set planned time');
+}
+
+export function setChannel(id: Id, channelId: Id | null): Promise<void> {
+  return patchTask(id, { channelId, edited: true }, 'Set channel');
+}
+
+export function setDailyPriority(id: Id, dailyPriority: DailyPriority): Promise<void> {
+  return patchTask(id, { dailyPriority }, 'Set priority');
+}
+
+/** Notes save as you type, so they are not added to the undo stack. */
+export async function setNotes(id: Id, notes: string): Promise<void> {
+  await db.tasks.update(id, { notes, edited: true, updatedAt: now() });
+}
+
+/** Copies a task and its subtasks, placing the copy directly below the original. */
+export async function duplicateTask(id: Id): Promise<Task> {
+  const source = await requireTask(id);
+  const list = (await db.tasks.where('[state+day]').equals(['active', source.day]).toArray()).sort((a, b) =>
+    compareKeys(a.order, b.order),
+  );
+  const next = list[list.findIndex((t) => t.id === id) + 1];
+  const stamp = now();
+  const copy: Task = {
+    ...source,
+    id: crypto.randomUUID(),
+    order: safeKeyBetween(source.order, next?.order ?? null),
+    completedAt: null,
+    completedDay: null,
+    rolloverDays: 0,
+    lastActivityDay: null,
+    seriesId: null,
+    seriesDay: null,
+    edited: false,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+  const subtasks = (await db.subtasks.where('taskId').equals(id).toArray()).map((s) => ({
+    ...s,
+    id: crypto.randomUUID(),
+    taskId: copy.id,
+    completedAt: null,
+  }));
+  await db.transaction('rw', db.tasks, db.subtasks, async () => {
+    await db.tasks.add(copy);
+    await db.subtasks.bulkAdd(subtasks);
+  });
+  recordUndo('Duplicate task', async () => {
+    await db.transaction('rw', db.tasks, db.subtasks, async () => {
+      await db.subtasks.where('taskId').equals(copy.id).delete();
+      await db.tasks.delete(copy.id);
+    });
+  });
+  return copy;
 }

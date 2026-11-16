@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { updateSettings } from '@/data/commands/settings';
-import { useSettings } from '@/data/queries';
+import { useSettings } from '@/data/ReferenceData';
 import type { DarkMode } from '@/data/types';
 
 const STORAGE_KEY = 'pi-theme';
@@ -21,10 +21,8 @@ function apply(mode: DarkMode): void {
 
 /** Keeps the document theme in step with the dark-mode setting and the OS. */
 export function useTheme(): void {
-  const darkMode = useSettings()?.darkMode;
+  const { darkMode } = useSettings();
   useEffect(() => {
-    // Until settings have loaded, keep the theme index.html already applied.
-    if (!darkMode) return;
     apply(darkMode);
     if (darkMode !== 'system') return;
     const media = matchMedia('(prefers-color-scheme: dark)');

@@ -5,7 +5,19 @@ import { tasksForDay } from '../queries';
 import { BACKLOG } from '../types';
 import { clearUndo, undoLast, useUndo } from '../undo';
 import { updateSettings } from './settings';
-import { createTask, deleteTask, moveTask, renameTask, setTaskCompleted } from './tasks';
+import { createChannel } from './channels';
+import { addSubtask, deleteSubtask, setSubtaskCompleted } from './subtasks';
+import {
+  createTask,
+  deleteTask,
+  duplicateTask,
+  moveTask,
+  nudgeTask,
+  placeTask,
+  renameTask,
+  setTaskCompleted,
+  snoozeTask,
+} from './tasks';
 
 const DAY = '2026-11-17';
 
@@ -114,5 +126,116 @@ describe('moveTask', () => {
 
     await moveTask(task.id, BACKLOG);
     expect((await tasksForDay(BACKLOG)).map((t) => t.title)).toEqual(['Prep workshop']);
+  });
+});
+
+describe('ordering commands', () => {
+  async function titles(day = DAY) {
+    return (await tasksForDay(day)).map((t) => t.title);
+  }
+
+  it('places a task between two neighbours', async () => {
+    const c = await createTask({ title: 'c' });
+    const b = await createTask({ title: 'b' });
+    const a = await createTask({ title: 'a' });
+    expect(await titles()).toEqual(['a', 'b', 'c']);
+    await placeTask(a.id, DAY, b.order, c.order);
+    expect(await titles()).toEqual(['b', 'a', 'c']);
+    await placeTask(a.id, DAY, c.order, null);
+    expect(await titles()).toEqual(['b', 'c', 'a']);
+  });
+
+  it('nudges one place at a time and stops at the edges', async () => {
+    await createTask({ title: 'c' });
+    const b = await createTask({ title: 'b' });
+    await createTask({ title: 'a' });
+    await nudgeTask(b.id, 'up');
+    expect(await titles()).toEqual(['b', 'a', 'c']);
+    await nudgeTask(b.id, 'up');
+    expect(await titles()).toEqual(['b', 'a', 'c']);
+    await nudgeTask(b.id, 'down');
+    await nudgeTask(b.id, 'down');
+    expect(await titles()).toEqual(['a', 'c', 'b']);
+  });
+
+  it('moves to the top or bottom of the same day', async () => {
+    await createTask({ title: 'c' });
+    await createTask({ title: 'b' });
+    const a = await createTask({ title: 'a' });
+    await moveTask(a.id, DAY, 'bottom');
+    expect(await titles()).toEqual(['b', 'c', 'a']);
+    await moveTask(a.id, DAY, 'top');
+    expect(await titles()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('snoozes to the next day, and from the backlog to tomorrow', async () => {
+    const task = await createTask({ title: 'later', day: '2026-11-20' });
+    await snoozeTask(task.id);
+    expect(await titles('2026-11-21')).toEqual(['later']);
+    await moveTask(task.id, BACKLOG);
+    await snoozeTask(task.id);
+    expect(await titles('2026-11-18')).toEqual(['later']);
+  });
+
+  it('clears the rollover count when the day changes, but not on reorder', async () => {
+    const task = await createTask({ title: 'stale' });
+    await db.tasks.update(task.id, { rolloverDays: 3 });
+    await moveTask(task.id, DAY, 'bottom');
+    expect((await db.tasks.get(task.id))?.rolloverDays).toBe(3);
+    await moveTask(task.id, '2026-11-18');
+    expect((await db.tasks.get(task.id))?.rolloverDays).toBe(0);
+  });
+});
+
+describe('duplicateTask', () => {
+  it('copies the task and its subtasks, unchecked, directly below the original', async () => {
+    await createTask({ title: 'other' });
+    const source = await createTask({ title: 'Prep workshop', plannedMin: 120 });
+    const sub = await addSubtask(source.id, 'Book room');
+    await setSubtaskCompleted(sub.id, true);
+    await setTaskCompleted(source.id, true);
+
+    const copy = await duplicateTask(source.id);
+    expect((await tasksForDay(DAY)).map((t) => t.title)).toEqual(['Prep workshop', 'Prep workshop', 'other']);
+    expect(copy.completedAt).toBeNull();
+    expect(copy.plannedMin).toBe(120);
+    const copied = await db.subtasks.where('taskId').equals(copy.id).toArray();
+    expect(copied.map((s) => [s.title, s.completedAt])).toEqual([['Book room', null]]);
+
+    await undoLast();
+    expect(await db.tasks.get(copy.id)).toBeUndefined();
+    expect(await db.subtasks.where('taskId').equals(copy.id).count()).toBe(0);
+  });
+});
+
+describe('subtasks', () => {
+  it('adds in order, completes with activity on the task, and undoes', async () => {
+    const task = await createTask({ title: 'Draft Q4 report' });
+    await addSubtask(task.id, 'Pull revenue numbers');
+    const second = await addSubtask(task.id, 'Outline sections');
+    const rows = (await db.subtasks.where('taskId').equals(task.id).toArray()).sort((a, b) => (a.order < b.order ? -1 : 1));
+    expect(rows.map((s) => s.title)).toEqual(['Pull revenue numbers', 'Outline sections']);
+
+    await setSubtaskCompleted(second.id, true);
+    expect((await db.tasks.get(task.id))?.lastActivityDay).toBe(DAY);
+    await undoLast();
+    expect((await db.subtasks.get(second.id))?.completedAt).toBeNull();
+    expect((await db.tasks.get(task.id))?.lastActivityDay).toBeNull();
+
+    await deleteSubtask(second.id);
+    expect(await db.subtasks.get(second.id)).toBeUndefined();
+    await undoLast();
+    expect((await db.subtasks.get(second.id))?.title).toBe('Outline sections');
+  });
+});
+
+describe('channels', () => {
+  it('normalises names and reuses an existing channel', async () => {
+    const created = await createChannel('  #Deep Work ');
+    expect(created.name).toBe('deep-work');
+    const again = await createChannel('deep work');
+    expect(again.id).toBe(created.id);
+    expect((await createChannel('work')).name).toBe('work');
+    expect(await db.channels.count()).toBe(3);
   });
 });

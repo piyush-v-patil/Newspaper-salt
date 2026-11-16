@@ -1,10 +1,16 @@
 import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { isDay, type Day } from '@/domain/dates';
+import { BoardPage } from '@/features/board/BoardPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
 
-const rootRoute = createRootRoute({ component: Shell });
+const rootRoute = createRootRoute({
+  component: Shell,
+  // The open task is part of the URL on every view.
+  validateSearch: (search: Record<string, unknown>): { task?: string } =>
+    typeof search.task === 'string' && search.task ? { task: search.task } : {},
+});
 const parent = () => rootRoute;
 
 const indexRoute = createRoute({
@@ -30,11 +36,7 @@ const weekRoute = createRoute({
   path: '/week',
   component: () => <ComingSoon title="This week" phase={5} summary="Weekly objectives and the tasks aligned with each." />,
 });
-const boardRoute = createRoute({
-  getParentRoute: parent,
-  path: '/board',
-  component: () => <ComingSoon title="Board" phase={1} summary="One column per day, with tasks you can drag between days." />,
-});
+const boardRoute = createRoute({ getParentRoute: parent, path: '/board', component: BoardPage });
 const calendarRoute = createRoute({
   getParentRoute: parent,
   path: '/calendar',

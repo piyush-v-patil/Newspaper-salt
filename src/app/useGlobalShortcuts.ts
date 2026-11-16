@@ -40,7 +40,8 @@ export function useGlobalShortcuts(): void {
         void undoLast();
         return;
       }
-      if (mod || e.altKey || isTyping(e.target)) return;
+      // While a window or picker is open, keys belong to it.
+      if (mod || e.altKey || isTyping(e.target) || document.querySelector('[role="dialog"]')) return;
 
       const ui = useUi.getState();
       if (e.key === '<') return ui.toggleLeft();
@@ -48,6 +49,10 @@ export function useGlobalShortcuts(): void {
 
       if (e.shiftKey) {
         if (e.key === 'L') return void toggleDarkMode();
+        if (e.key === 'F') {
+          e.preventDefault();
+          return ui.setFilterMenuOpen(true);
+        }
         const panel = shiftPanels[e.key];
         if (panel) ui.showRightPanel(panel);
         return;
@@ -56,7 +61,7 @@ export function useGlobalShortcuts(): void {
       const key = e.key.toLowerCase();
       if (key === 'a') {
         e.preventDefault();
-        ui.requestAddTask();
+        ui.openAddTask();
         return;
       }
       if (key in goTo) void navigate({ to: goTo[key as keyof typeof goTo] });

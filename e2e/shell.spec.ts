@@ -3,11 +3,14 @@ import { expect, test } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/today$/);
+  // The shell appears once stored settings and channels have loaded.
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
 });
 
+const addRow = (page: import('@playwright/test').Page) => page.getByLabel(/^Add task to/).first();
+
 test('a task survives a reload, can be completed, deleted and restored', async ({ page }) => {
-  await page.keyboard.press('a');
-  await expect(page.getByLabel('Add task')).toBeFocused();
+  await addRow(page).click();
   await page.keyboard.type('Draft Q4 report');
   await page.keyboard.press('Enter');
   await page.keyboard.type('Review designs');
@@ -22,7 +25,7 @@ test('a task survives a reload, can be completed, deleted and restored', async (
   await expect(page.getByText('1 to do')).toBeVisible();
 
   await page.getByTestId('task').first().hover();
-  await page.getByRole('button', { name: 'Delete Review designs' }).click();
+  await page.keyboard.press('Control+Backspace');
   await expect(page.getByTestId('task')).toHaveCount(1);
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByTestId('task')).toHaveCount(2);
@@ -31,13 +34,13 @@ test('a task survives a reload, can be completed, deleted and restored', async (
 test('single keys switch views and Ctrl+Z undoes', async ({ page }) => {
   await page.keyboard.press('h');
   await expect(page).toHaveURL(/\/board$/);
-  await expect(page.getByRole('heading', { name: 'Board' })).toBeVisible();
+  await expect(page.getByTestId('board')).toBeVisible();
   await page.keyboard.press('o');
   await expect(page).toHaveURL(/\/shutdown$/);
   await page.keyboard.press('t');
   await expect(page).toHaveURL(/\/today$/);
 
-  await page.getByLabel('Add task').fill('Temporary');
+  await addRow(page).fill('Temporary');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('task')).toHaveCount(1);
@@ -45,9 +48,9 @@ test('single keys switch views and Ctrl+Z undoes', async ({ page }) => {
   await expect(page.getByTestId('task')).toHaveCount(0);
 });
 
-test('typing in the add field does not trigger shortcuts', async ({ page }) => {
-  await page.getByLabel('Add task').fill('th');
-  await page.getByLabel('Add task').press('h');
+test('typing in a field does not trigger shortcuts', async ({ page }) => {
+  await addRow(page).fill('th');
+  await addRow(page).press('h');
   await expect(page).toHaveURL(/\/today$/);
 });
 
