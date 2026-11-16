@@ -1,0 +1,189 @@
+import type { Day } from '@/domain/dates';
+
+export type Id = string;
+
+/** Where a task lives: a calendar day, or the backlog. */
+export const BACKLOG = 'backlog';
+export type TaskDay = Day | typeof BACKLOG;
+
+export type TaskState = 'active' | 'archived' | 'deleted';
+export type DailyPriority = 'urgent' | 'priority' | 'normal' | 'low';
+export type BacklogPriority = 'urgent' | 'high' | 'medium' | 'low' | 'none';
+export type BacklogBucket = 'soon' | 'month' | 'quarter' | 'year' | 'someday' | 'never';
+export type TaskKind = 'task' | 'ritual' | 'setup';
+
+export interface Task {
+  id: Id;
+  title: string;
+  notes: string;
+  channelId: Id | null;
+  day: TaskDay;
+  order: string;
+  plannedMin: number | null;
+  dailyPriority: DailyPriority;
+  backlogPriority: BacklogPriority;
+  backlogBucket: BacklogBucket;
+  backlogFolderId: Id | null;
+  objectiveId: Id | null;
+  completedAt: number | null;
+  completedDay: Day | null;
+  /** Consecutive days this task has rolled over without activity. */
+  rolloverDays: number;
+  lastActivityDay: Day | null;
+  state: TaskState;
+  stateChangedAt: number | null;
+  seriesId: Id | null;
+  seriesDay: Day | null;
+  /** True once a recurring instance has been changed by hand. */
+  edited: boolean;
+  kind: TaskKind;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Subtask {
+  id: Id;
+  taskId: Id;
+  title: string;
+  order: string;
+  plannedMin: number | null;
+  completedAt: number | null;
+}
+
+export interface TimeEntry {
+  id: Id;
+  taskId: Id;
+  subtaskId: Id | null;
+  start: number;
+  /** null while the timer is running. */
+  end: number | null;
+}
+
+/** A timebox: a block of calendar time reserved for a task. */
+export interface Session {
+  id: Id;
+  taskId: Id;
+  day: Day;
+  startMin: number;
+  endMin: number;
+}
+
+export interface CalendarEvent {
+  id: Id;
+  title: string;
+  day: Day;
+  startMin: number;
+  endMin: number;
+  channelId: Id | null;
+  blocksTime: boolean;
+}
+
+export interface Series {
+  id: Id;
+  rrule: string;
+  atRoughlyMin: number | null;
+  rigid: boolean;
+  template: Pick<Task, 'title' | 'notes' | 'channelId' | 'plannedMin'>;
+}
+
+export interface Context {
+  id: Id;
+  name: string;
+  color: string;
+  /** Tasks in a personal context never count toward workload. */
+  isPersonal: boolean;
+  order: string;
+}
+
+export interface Channel {
+  id: Id;
+  contextId: Id | null;
+  name: string;
+  color: string;
+  isDefault: boolean;
+  enabled: boolean;
+  order: string;
+}
+
+export interface BacklogFolder {
+  id: Id;
+  name: string;
+  order: string;
+}
+
+export interface Objective {
+  id: Id;
+  weekStart: Day;
+  title: string;
+  notes: string;
+  channelId: Id | null;
+  order: string;
+  completedAt: number | null;
+}
+
+export type RitualStatus = 'none' | 'in_progress' | 'done';
+
+export interface DayRecord {
+  day: Day;
+  planStatus: RitualStatus;
+  planStep: number;
+  planText: string;
+  obstacles: string;
+  shutdownMin: number | null;
+  shutdownStatus: RitualStatus;
+  highlights: Id[];
+  mood: string | null;
+  reflection: string;
+}
+
+export interface WeekRecord {
+  weekStart: Day;
+  planStatus: RitualStatus;
+  planText: string;
+  reviewStatus: RitualStatus;
+  reviewText: string;
+}
+
+export interface Profile {
+  name: string;
+  createdAt: number;
+  onboardingCompletedAt: number | null;
+  /** Coached planning runs for the first sessions, then stops. */
+  guidedPlansRemaining: number;
+}
+
+export type DarkMode = 'on' | 'off' | 'system';
+export type DefaultView = 'today' | 'board' | 'calendar';
+export type ListEdge = 'top' | 'bottom';
+
+export interface DaySchedule {
+  available: boolean;
+  startMin: number;
+  endMin: number;
+}
+
+export interface Settings {
+  darkMode: DarkMode;
+  timeFormat: '12h' | '24h';
+  weekStartsOn: 0 | 1;
+  defaultView: DefaultView;
+  newTaskPosition: ListEdge;
+  rolloverPosition: ListEdge;
+  workloadThresholdMin: number;
+  countPlannedAsActual: boolean;
+  /** Index 0 is Sunday. */
+  schedule: DaySchedule[];
+  planningMin: number;
+  autoPlanning: boolean;
+  autoShutdown: boolean;
+  weeklyPlan: { weekday: number; min: number; auto: boolean };
+  weeklyReview: { weekday: number; min: number; auto: boolean };
+  defaultSessionMin: 15 | 30 | 45 | 60;
+  autoScheduleGapMin: 0 | 5 | 10 | 15;
+  rescheduleOnConflict: boolean;
+  rescheduleOnEarlyFinish: boolean;
+  focusOnTimerStart: boolean;
+  /** Consecutive rollover days before a task is archived; null turns it off. */
+  archiveAfterDays: number | null;
+  celebrations: boolean;
+}
