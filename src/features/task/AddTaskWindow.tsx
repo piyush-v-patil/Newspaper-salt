@@ -1,9 +1,13 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { ArrowDownToLine, ArrowUpToLine, Target } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, CornerDownRight, Folder, Target, X } from 'lucide-react';
 import { useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { useUi } from '@/app/uiStore';
-import { useObjectives } from '@/data/queries';
+import { useBacklogFolders, useObjectives, useOpenTasks } from '@/data/queries';
+import { addSubtask, setSubtaskPlanned } from '@/data/commands/subtasks';
+import { BACKLOG } from '@/data/types';
+import { extractTokens } from '@/domain/tokens';
+import { relativeDayLabel } from '@/domain/dayLabels';
 import { useChannels, useContexts, useSettings } from '@/data/ReferenceData';
 import { weekStartOf } from '@/domain/weeks';
 import type { DailyPriority, Id, ListEdge, TaskDay } from '@/data/types';
@@ -22,16 +26,22 @@ const TIPS = [
   'Type # to pick a channel',
   'Type @ to choose a day',
   'Type ! to set priority',
+  'Type $ to link a weekly objective',
+  'Type > to add it as a subtask of another task',
+  'Type < to put it in a backlog folder',
   'Ctrl+Enter adds the task and opens it',
 ];
 let nextTip = 0;
 
-type Trigger = '#' | '~' | '@' | '!';
+type Trigger = '#' | '~' | '@' | '!' | '$' | '>' | '<';
 type TokenValue =
   | { kind: 'channel'; choice: ChannelChoice }
   | { kind: 'planned'; minutes: number | null }
   | { kind: 'day'; day: TaskDay }
-  | { kind: 'priority'; priority: DailyPriority };
+  | { kind: 'priority'; priority: DailyPriority }
+  | { kind: 'objective'; id: Id }
+  | { kind: 'parent'; id: Id }
+  | { kind: 'folder'; id: Id };
 
 interface Token {
   trigger: Trigger;
@@ -42,12 +52,12 @@ interface Token {
 
 /** The typing shortcut under the caret, if the caret sits in one. */
 function tokenAt(text: string, caret: number): Token | null {
-  const match = text.slice(0, caret).match(/(?:^|\s)([#~@!])([^#~@!]*)$/);
+  const match = text.slice(0, caret).match(/(?:^|\s)([#~@!$><])([^#~@!$><]*)$/);
   if (!match) return null;
   const trigger = match[1] as Trigger;
   const query = match[2];
-  // Only a date ("next week") may contain a space.
-  if (trigger !== '@' && /\s/.test(query)) return null;
+  // Only a date ("next week") or a task's name may contain a space.
+  if (trigger !== '@' && trigger !== '>' && /\s/.test(query)) return null;
   return { trigger, start: caret - query.length - 1, query };
 }
 
@@ -70,6 +80,13 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
   const [priority, setPriority] = useState<DailyPriority>('normal');
   const [objectiveId, setObjectiveId] = useState<Id | null>(null);
   const [position, setPosition] = useState<ListEdge>(newTaskPosition);
+  // ">": add as a subtask of this task instead. "<": into this backlog folder.
+  const [parentId, setParentId] = useState<Id | null>(null);
+  const [folder, setFolder] = useState<Id | null>(folderId);
+  const openTasks = useOpenTasks();
+  const folders = useBacklogFolders();
+  const parent = openTasks.find((t) => t.id === parentId);
+  const folderName = folders.find((f) => f.id === folder)?.name;
   const [tip] = useState(() => TIPS[nextTip++ % TIPS.length]);
   const objectives = useObjectives(weekStartOf(today(), weekStartsOn));
   const objective = objectives.find((o) => o.id === objectiveId);
@@ -99,8 +116,32 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
         return wrap(dateOptions(token.query, today(), weekStartsOn), (d) => ({ kind: 'day', day: d }));
       case '!':
         return wrap(priorityOptions(token.query), (p) => ({ kind: 'priority', priority: p }));
+      case '$': {
+        const q = token.query.toLowerCase();
+        return objectives
+          .filter((o) => o.completedAt === null && o.title.toLowerCase().includes(q))
+          .map((o) => ({ key: o.id, label: o.title, value: { kind: 'objective', id: o.id } as TokenValue }));
+      }
+      case '>': {
+        const q = token.query.trim().toLowerCase();
+        // Tasks on the day being added to come first.
+        return openTasks
+          .filter((t) => t.title.toLowerCase().includes(q))
+          .sort((a, b) => Number(b.day === day) - Number(a.day === day))
+          .slice(0, 8)
+          .map((t) => ({
+            key: t.id,
+            label: t.title,
+            hint: t.day === BACKLOG ? 'Backlog' : relativeDayLabel(t.day, today()),
+            value: { kind: 'parent', id: t.id } as TokenValue,
+          }));
+      }
+      case '<': {
+        const q = token.query.toLowerCase();
+        return folders.filter((f) => f.name.toLowerCase().includes(q)).map((f) => ({ key: f.id, label: f.name, value: { kind: 'folder', id: f.id } as TokenValue }));
+      }
     }
-  }, [token, channels, contexts, weekStartsOn]);
+  }, [token, channels, contexts, weekStartsOn, objectives, openTasks, folders, day]);
 
   // Creating a new channel takes a moment. The title updates at once and
   // saving waits for the channel, so a quick second Enter is never lost.
@@ -116,7 +157,13 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
     if (value.kind === 'channel') channelWork.current = resolveChannel(value.choice).then(chooseChannel);
     else if (value.kind === 'planned') setPlannedMin(value.minutes);
     else if (value.kind === 'day') setDay(value.day);
-    else setPriority(value.priority);
+    else if (value.kind === 'priority') setPriority(value.priority);
+    else if (value.kind === 'objective') setObjectiveId(value.id);
+    else if (value.kind === 'parent') setParentId(value.id);
+    else {
+      setFolder(value.id);
+      setDay(BACKLOG);
+    }
 
     const next = (title.slice(0, token.start) + title.slice(caret)).replace(/\s{2,}/g, ' ');
     const position = Math.min(token.start, next.length);
@@ -146,7 +193,24 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
 
   async function submitNow(openAfter: boolean, at: ListEdge) {
     await channelWork.current;
-    const task = await createFromText(title, { day, channelId: channelRef.current, plannedMin, priority, objectiveId, folderId, position: at });
+    if (parentId) {
+      const text = extractTokens(title).title;
+      if (!text) return;
+      const subtask = await addSubtask(parentId, text);
+      if (plannedMin !== null) await setSubtaskPlanned(subtask.id, plannedMin);
+      onDone();
+      if (openAfter) openTask(parentId);
+      return;
+    }
+    const task = await createFromText(title, {
+      day,
+      channelId: channelRef.current,
+      plannedMin,
+      priority,
+      objectiveId,
+      folderId: day === BACKLOG ? folder : null,
+      position: at,
+    });
     if (!task) return;
     onDone();
     if (openAfter) openTask(task.id);
@@ -193,6 +257,14 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
           autoComplete="off"
           className="w-full bg-transparent text-[18px] outline-none placeholder:text-ink-3"
         />
+        {parent && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-ink-2">
+            <CornerDownRight size={13} /> Subtask of <span className="font-medium text-ink">{parent.title}</span>
+            <button type="button" aria-label="Add as its own task instead" onClick={() => setParentId(null)} className="grid h-4 w-4 place-items-center rounded text-ink-3 hover:text-ink">
+              <X size={12} />
+            </button>
+          </p>
+        )}
         {menuOpen && (
           <div className="absolute left-4 top-full z-10 mt-1 w-[240px] rounded-lg border border-line bg-surface shadow-pop">
             <OptionList options={options} active={nav.active} onHover={nav.setActive} onSelect={applyToken} />
@@ -229,6 +301,11 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
               </Chip>
             }
           />
+          {folderName && day === BACKLOG && (
+            <span className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-[13px] text-ink">
+              <Folder size={15} /> {folderName}
+            </span>
+          )}
           <button
             type="button"
             aria-label={position === 'top' ? 'Add to the top of the list' : 'Add to the bottom of the list'}

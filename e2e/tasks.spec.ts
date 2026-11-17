@@ -218,3 +218,45 @@ test('the board drags a task to another day and reorders within a day', async ({
   await page.reload();
   await expect(page.getByTestId('board').locator(`section[data-day="${tomorrow}"]`).getByTestId('task')).toHaveText(['top']);
 });
+
+test('$ links an objective, > adds a subtask to another task, < files it in a backlog folder', async ({ page }) => {
+  // An objective for this week and a backlog folder to point at.
+  await page.keyboard.press('n');
+  await page.keyboard.press('a');
+  await page.keyboard.type('Hire designer');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Add folder' }).click();
+  await page.getByLabel('New folder name').fill('Ideas');
+  await page.getByLabel('New folder name').press('Enter');
+  await expect(page).toHaveURL(/folder=/);
+  await page.keyboard.press('t');
+  await expect(page).toHaveURL(/\/today$/);
+
+  await page.keyboard.press('a');
+  await page.keyboard.type('Call agency $hire');
+  await expect(page.getByRole('option', { name: 'Hire designer' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Task title')).toHaveValue('Call agency ');
+  await page.keyboard.press('Enter');
+  await expect(card(page, 'Call agency')).toContainText('This week');
+
+  await page.keyboard.press('a');
+  await page.keyboard.type('Draft questions ~15 >call');
+  await expect(page.getByRole('option', { name: /Call agency/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Subtask of Call agency')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(tasks(page)).toHaveCount(1);
+  await expect(card(page, 'Call agency')).toContainText('Draft questions');
+
+  await page.keyboard.press('a');
+  await page.keyboard.type('Trip to Japan <ide');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(tasks(page)).toHaveCount(1);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Ideas' }).click();
+  await expect(card(page, 'Trip to Japan')).toBeVisible();
+});

@@ -273,3 +273,8 @@ export function useTracked(days: Day[], nowMs: number, enabled: boolean): Tracke
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, key, nowMs]);
 }
+
+/** Every open task (not finished, archived or deleted), for picking one by name. */
+export function useOpenTasks(): Task[] {
+  return useLiveQuery(() => db.tasks.where('state').equals('active').filter((t) => t.completedAt === null && t.kind === 'task').toArray(), []) ?? [];
+}
