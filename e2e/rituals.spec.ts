@@ -47,6 +47,7 @@ test('unfinished tasks roll over at midnight while the app is open, with a count
 test('a task that keeps rolling over is archived, announced, and can be brought back', async ({ page }) => {
   await openAt(page, '2026-11-17T10:00:00');
   await quickAdd(page, 'Never quite done');
+  await expect(card(page, 'Never quite done')).toBeVisible();
   await reopenAt(page, '2026-11-21T09:00:00');
   await expect(card(page, 'Never quite done').getByTitle('Rolled over 4 days in a row')).toBeVisible();
 

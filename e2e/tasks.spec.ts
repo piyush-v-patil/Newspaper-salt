@@ -163,6 +163,7 @@ test('shortcuts act on the hovered task', async ({ page }) => {
 
 test('arrow keys select tasks and V opens the task page on subtasks', async ({ page }) => {
   await quickAdd(page, 'b', 'a');
+  await expect(tasks(page)).toHaveText(['a', 'b']);
   await page.mouse.move(5, 300);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
