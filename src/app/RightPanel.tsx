@@ -3,6 +3,7 @@ import { Archive, CalendarDays, ListChecks, ListTodo, Search, Target, Trash2, ty
 import { CalendarPanel } from '@/features/calendar/CalendarPanel';
 import { TasksPanel } from '@/features/calendar/TasksPanel';
 import { BacklogPanel } from '@/features/lists/BacklogPanel';
+import { ObjectivesPanel } from '@/features/week/ObjectivesPanel';
 import { ArchivePanel, SearchPanel, TrashPanel } from '@/features/lists/panels';
 import { useTasksInState } from '@/data/queries';
 import { useUi, type RightPanelKind } from './uiStore';
@@ -12,23 +13,23 @@ interface PanelDef {
   label: string;
   icon: LucideIcon;
   hint?: string;
-  /** Shown until the panel is built. */
-  body?: string;
 }
 
 const panels: PanelDef[] = [
   { kind: 'calendar', label: 'Calendar', icon: CalendarDays, hint: 'Shift C' },
-  { kind: 'objectives', label: 'Weekly objectives', icon: Target, hint: 'Shift R', body: 'This week’s objectives and the time planned for each.' },
+  { kind: 'objectives', label: 'Weekly objectives', icon: Target, hint: 'Shift R' },
   { kind: 'backlog', label: 'Backlog', icon: ListTodo, hint: 'Shift B' },
   { kind: 'archive', label: 'Archive', icon: Archive, hint: 'Shift A' },
   { kind: 'search', label: 'Search', icon: Search, hint: 'Ctrl F' },
   { kind: 'trash', label: 'Trash', icon: Trash2 },
 ];
 
-function PanelBody({ kind, onCalendar, label, body }: { kind: RightPanelKind; onCalendar: boolean; label: string; body?: string }) {
+function PanelBody({ kind, onCalendar }: { kind: RightPanelKind; onCalendar: boolean }) {
   switch (kind) {
     case 'calendar':
       return onCalendar ? <TasksPanel /> : <CalendarPanel />;
+    case 'objectives':
+      return <ObjectivesPanel />;
     case 'backlog':
       return <BacklogPanel />;
     case 'archive':
@@ -38,12 +39,7 @@ function PanelBody({ kind, onCalendar, label, body }: { kind: RightPanelKind; on
     case 'search':
       return <SearchPanel />;
     default:
-      return (
-        <div className="flex h-full w-[300px] flex-col gap-2 p-4">
-          <h2 className="text-[13px] font-semibold">{label}</h2>
-          <p className="text-[13px] text-ink-3">{body}</p>
-        </div>
-      );
+      return null;
   }
 }
 
@@ -63,7 +59,7 @@ export function RightPanel() {
         className="overflow-hidden border-line transition-[width] duration-200 ease-out-soft"
         style={{ width: rightOpen ? 300 : 0, borderLeftWidth: rightOpen ? 1 : 0 }}
       >
-        {rightOpen && <PanelBody kind={active.kind} onCalendar={onCalendar} label={active.label} body={active.body} />}
+        {rightOpen && <PanelBody kind={active.kind} onCalendar={onCalendar} />}
       </aside>
       <div role="toolbar" aria-label="Side panels" className="flex w-12 flex-col items-center gap-1 border-l border-line py-3">
         {shown.map(({ kind, label, icon: Icon, hint }) => {

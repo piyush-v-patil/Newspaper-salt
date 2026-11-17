@@ -1,11 +1,12 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, Flag } from 'lucide-react';
+import { Clock, Flag, Target } from 'lucide-react';
 import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
 import { PLANNING_CARD } from '@/data/commands/days';
+import { linkTask } from '@/data/commands/objectives';
 import { setActualForDay } from '@/data/commands/timer';
 import { useRunningTimer } from '@/data/queries';
 import { BACKLOG, type BacklogPriority, type DailyPriority, type Task } from '@/data/types';
@@ -18,7 +19,7 @@ import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
 import { ChannelTag } from './ChannelTag';
 import { useTaskData } from './TaskData';
-import { BacklogPriorityPicker, ChannelPicker, DatePicker, PriorityPicker, TimePicker } from './pickers/pickers';
+import { BacklogPriorityPicker, ChannelPicker, DatePicker, ObjectivePicker, PriorityPicker, TimePicker } from './pickers/pickers';
 import { PRIORITY_LABELS } from './pickers/options';
 import { useTaskFocus, type TaskActionKind } from './taskFocus';
 import { useOpenTask } from './useOpenTask';
@@ -139,13 +140,23 @@ export function TaskCardBody({ task }: { task: Task }) {
         </ul>
       )}
 
-      {(channel || scheduled || task.rolloverDays > 0) && (
+      {(channel || scheduled || task.rolloverDays > 0 || task.objectiveId) && (
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5">
             {scheduled && (
               <span className="tabular text-[12px] font-medium text-accent" title="Scheduled on the calendar">
                 {formatClock(scheduled.startMin, timeFormat)}
               </span>
+            )}
+            {task.objectiveId && (
+              <button
+                type="button"
+                onClick={open('objective')}
+                title="Linked to a weekly objective"
+                className="flex items-center gap-1 rounded text-[11.5px] font-medium text-ink-2 hover:text-ink"
+              >
+                <Target size={11} /> This week
+              </button>
             )}
             {task.rolloverDays > 0 && (
               <span
@@ -173,6 +184,7 @@ const ACTION_LABEL: Record<TaskActionKind, string> = {
   channel: 'Channel',
   date: 'Move to',
   priority: 'Priority',
+  objective: 'Weekly objective',
 };
 
 function ActionPicker({ task, kind, onDone }: { task: Task; kind: TaskActionKind; onDone: () => void }) {
@@ -187,6 +199,8 @@ function ActionPicker({ task, kind, onDone }: { task: Task; kind: TaskActionKind
       return <ChannelPicker value={task.channelId} onPick={(id) => then(setChannel(task.id, id))} />;
     case 'date':
       return <DatePicker onPick={(day) => then(moveTask(task.id, day))} />;
+    case 'objective':
+      return <ObjectivePicker value={task.objectiveId} onPick={(id) => then(linkTask(task.id, id))} />;
     case 'priority':
       return task.day === BACKLOG ? (
         <BacklogPriorityPicker onPick={(p) => then(setBacklogPriority(task.id, p))} />

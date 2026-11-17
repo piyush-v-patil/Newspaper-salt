@@ -121,6 +121,8 @@ export function useTaskShortcuts(): void {
           return act(() => focus.openAction(id, 'planned'));
         case 'q':
           return act(() => focus.openAction(id, 'channel'));
+        case 'r':
+          return act(() => focus.openAction(id, 'objective'));
         case '!':
           return act(() => focus.openAction(id, 'priority'));
         case '@':

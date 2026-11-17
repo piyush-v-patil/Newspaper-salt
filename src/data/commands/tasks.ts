@@ -25,6 +25,7 @@ export interface NewTask {
   dailyPriority?: DailyPriority;
   backlogBucket?: BacklogBucket;
   backlogFolderId?: Id | null;
+  objectiveId?: Id | null;
   position?: ListEdge;
 }
 
@@ -51,7 +52,7 @@ export const createTask = command(async (input: NewTask): Promise<Task> => {
     backlogPriority: 'none',
     backlogBucket: input.backlogBucket ?? 'someday',
     backlogFolderId: day === BACKLOG ? (input.backlogFolderId ?? null) : null,
-    objectiveId: null,
+    objectiveId: input.objectiveId ?? null,
     completedAt: null,
     completedDay: null,
     rolloverDays: 0,

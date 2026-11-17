@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
 import { db } from './db';
-import type { BacklogFolder, CalendarEvent, DayRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
+import type { BacklogFolder, CalendarEvent, DayRecord, Objective, WeekRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
 
 const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.order, b.order);
 
@@ -134,4 +134,46 @@ export function useTasksById(ids: Id[]): Map<Id, Task> {
 export function useBacklogFolders(): BacklogFolder[] {
   const rows = useLiveQuery(() => db.backlogFolders.toArray(), []);
   return useMemo(() => (rows ?? []).slice().sort(byOrder), [rows]);
+}
+
+/** A week's objectives, in order. */
+export function useObjectives(weekStart: Day): Objective[] {
+  const rows = useLiveQuery(() => db.objectives.where('weekStart').equals(weekStart).toArray(), [weekStart]);
+  return useMemo(() => (rows ?? []).slice().sort(byOrder), [rows]);
+}
+
+/** Live tasks linked to any of the given objectives, grouped by objective. */
+export function useObjectiveTasks(objectiveIds: Id[]): Map<Id, Task[]> {
+  const key = objectiveIds.join(',');
+  const rows = useLiveQuery(() => (objectiveIds.length ? db.tasks.where('objectiveId').anyOf(objectiveIds).toArray() : []), [key]);
+  return useMemo(() => {
+    const grouped = new Map<Id, Task[]>();
+    for (const task of rows ?? []) {
+      if (task.state !== 'active' || !task.objectiveId) continue;
+      const list = grouped.get(task.objectiveId);
+      if (list) list.push(task);
+      else grouped.set(task.objectiveId, [task]);
+    }
+    // Earliest day first; the backlog sorts last.
+    for (const list of grouped.values()) list.sort((a, b) => (a.day === b.day ? compareKeys(a.order, b.order) : a.day < b.day ? -1 : 1));
+    return grouped;
+  }, [rows]);
+}
+
+/** Time entries that started within a range of days (inclusive). */
+export function useEntriesBetween(first: Day, last: Day): TimeEntry[] {
+  const rows = useLiveQuery(() => {
+    const start = new Date(`${first}T00:00:00`).getTime();
+    const end = new Date(`${last}T00:00:00`).getTime() + 24 * 60 * 60 * 1000;
+    return db.timeEntries.where('start').between(start, end, true, false).toArray();
+  }, [first, last]);
+  return rows ?? [];
+}
+
+export function emptyWeekRecord(weekStart: Day): WeekRecord {
+  return { weekStart, planStatus: 'none', planText: '', reviewStatus: 'none', reviewText: '' };
+}
+
+export function useWeekRecord(weekStart: Day): WeekRecord | undefined {
+  return useLiveQuery(async () => (await db.weeks.get(weekStart)) ?? emptyWeekRecord(weekStart), [weekStart]);
 }

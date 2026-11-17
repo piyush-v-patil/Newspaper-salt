@@ -1,8 +1,10 @@
 import { createChannel } from '@/data/commands/channels';
+import { useObjectives } from '@/data/queries';
 import { useChannels, useContexts, useSettings } from '@/data/ReferenceData';
 import type { BacklogPriority, DailyPriority, Id, TaskDay } from '@/data/types';
 import { BACKLOG_PRIORITIES } from '@/domain/backlog';
 import { today } from '@/domain/clock';
+import { weekStartOf } from '@/domain/weeks';
 import { PickerPanel } from './PickerPanel';
 import { channelOptions, dateOptions, priorityOptions, timeOptions, type ChannelChoice } from './options';
 
@@ -58,6 +60,28 @@ export function BacklogPriorityPicker({ onPick }: { onPick: (priority: BacklogPr
         const options = BACKLOG_PRIORITIES.map((p, i) => ({ key: p.id, label: p.label, value: p.id, hint: String(i + 1) }));
         if (/^[1-5]$/.test(q)) return [options[Number(q) - 1]];
         return q ? options.filter((o) => o.label.toLowerCase().startsWith(q)) : options;
+      }}
+      onSelect={onPick}
+    />
+  );
+}
+
+/** This week's objectives, to link a task to one (or to none). */
+export function ObjectivePicker({ value, onPick }: { value: Id | null; onPick: (objectiveId: Id | null) => void }) {
+  const { weekStartsOn } = useSettings();
+  const objectives = useObjectives(weekStartOf(today(), weekStartsOn));
+  return (
+    <PickerPanel
+      label="Weekly objective"
+      placeholder="Link to an objective"
+      emptyText="No objectives this week. Add one under This week."
+      getOptions={(query) => {
+        const q = query.trim().toLowerCase();
+        const options: { key: string; label: string; value: Id | null }[] = objectives
+          .filter((o) => o.title.toLowerCase().includes(q))
+          .map((o) => ({ key: o.id, label: o.title, value: o.id }));
+        if (!q && value !== null) options.push({ key: 'none', label: 'No objective', value: null });
+        return options;
       }}
       onSelect={onPick}
     />

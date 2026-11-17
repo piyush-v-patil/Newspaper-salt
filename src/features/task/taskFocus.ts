@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Id } from '@/data/types';
 
-export type TaskActionKind = 'planned' | 'actual' | 'channel' | 'date' | 'priority';
+export type TaskActionKind = 'planned' | 'actual' | 'channel' | 'date' | 'priority' | 'objective';
 
 interface TaskFocusState {
   /** The task under the cursor. Shortcuts act on it. */

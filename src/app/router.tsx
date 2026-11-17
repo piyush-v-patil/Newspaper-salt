@@ -7,6 +7,7 @@ import { HighlightsPage } from '@/features/rituals/HighlightsPage';
 import { PlanPage } from '@/features/rituals/PlanPage';
 import { ShutdownPage } from '@/features/rituals/ShutdownPage';
 import { BacklogPage } from '@/features/lists/BacklogPage';
+import { WeekPage } from '@/features/week/WeekPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -40,7 +41,11 @@ const todayRoute = createRoute({
 const weekRoute = createRoute({
   getParentRoute: parent,
   path: '/week',
-  component: () => <ComingSoon title="This week" phase={5} summary="Weekly objectives and the tasks aligned with each." />,
+  validateSearch: (search: Record<string, unknown>): { start?: Day } => (isDay(search.start) ? { start: search.start } : {}),
+  component: function Week() {
+    const { start } = weekRoute.useSearch();
+    return <WeekPage start={start} />;
+  },
 });
 const boardRoute = createRoute({ getParentRoute: parent, path: '/board', component: BoardPage });
 const calendarRoute = createRoute({
