@@ -11,6 +11,10 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
+## Use it on the web
+
+Every push publishes the web app to GitHub Pages at **https://piyush-v-patil.github.io/Newspaper-salt/**. It needs a one-time switch in the repository: **Settings → Pages → Source: GitHub Actions**. The address is public, but there is no shared data: everything you add stays in your own browser, and each visitor starts with an empty app.
+
 ## The Windows app
 
 The same app, wrapped as a desktop program with [Tauri](https://tauri.app). On top of the web version it adds:

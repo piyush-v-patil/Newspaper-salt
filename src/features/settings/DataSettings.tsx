@@ -4,6 +4,7 @@ import { backupTaskCount, exportData, parseBackup, restoreBackup, type Backup } 
 import { db } from '@/data/db';
 import { now } from '@/domain/clock';
 import { platform } from '@/platform';
+import { BASE } from '@/app/appPath';
 
 const button = 'h-8 rounded-md border border-line px-3 text-[13px] hover:bg-hover';
 const danger = 'h-8 rounded-md bg-over px-3 text-[13px] font-medium text-white';
@@ -34,13 +35,13 @@ export function DataSettings() {
   async function replace() {
     if (!pending) return;
     await restoreBackup(pending);
-    location.assign('/');
+    location.assign(BASE);
   }
 
   async function eraseEverything() {
     db.close();
     await db.delete();
-    location.assign('/');
+    location.assign(BASE);
   }
 
   return (

@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
+import { appPath } from '@/app/appPath';
 import { useEffect } from 'react';
 import { useUi } from '@/app/uiStore';
 import { autoScheduleTask, clearSessions } from '@/data/commands/sessions';
@@ -57,7 +58,7 @@ export function useTaskShortcuts(): void {
     async function onKeyDown(e: KeyboardEvent) {
       if (e.altKey || isTyping(e.target) || document.querySelector('[role="dialog"]')) return;
       // Focus mode has one task and its own keys.
-      if (/^\/(focus|welcome)/.test(location.pathname)) return;
+      if (/^\/(focus|welcome)/.test(appPath())) return;
       const mod = e.ctrlKey || e.metaKey;
       const focus = useTaskFocus.getState();
 
@@ -66,7 +67,7 @@ export function useTaskShortcuts(): void {
         return moveSelection(e.key, e.shiftKey);
       }
       // In a ritual, Left and Right move between its steps instead.
-      const inRitual = /^\/(plan|shutdown|weekly)/.test(location.pathname);
+      const inRitual = /^\/(plan|shutdown|weekly)/.test(appPath());
       if (!mod && !e.shiftKey && !inRitual && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         return moveSelection(e.key, false);

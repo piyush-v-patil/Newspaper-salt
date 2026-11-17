@@ -14,6 +14,7 @@ import { WeeklyPlanPage, WeeklyReviewPage } from '@/features/rituals/WeeklyPages
 import { SetupPage } from '@/features/setup/SetupPage';
 import { SETTINGS_SECTIONS, SettingsPage, type SettingsSection } from '@/features/settings/SettingsPage';
 import { TodayPage } from '@/features/today/TodayPage';
+import { ROUTER_BASE } from './appPath';
 import { Shell } from './Shell';
 
 const rootRoute = createRootRoute({
@@ -119,7 +120,7 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
 ]);
 
-export const router = createRouter({ routeTree, defaultPreload: 'intent' });
+export const router = createRouter({ routeTree, defaultPreload: 'intent', basepath: ROUTER_BASE });
 
 declare module '@tanstack/react-router' {
   interface Register {

@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
+import { appPath } from '@/app/appPath';
 import { useEffect } from 'react';
 import { undoLast } from '@/data/undo';
 import { takeBreak } from '@/features/focus/actions';
@@ -39,7 +40,7 @@ export function useGlobalShortcuts(): void {
 
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'k') {
         // The command palette opens from anywhere, even while typing.
-        if (location.pathname.startsWith('/welcome')) return;
+        if (appPath().startsWith('/welcome')) return;
         e.preventDefault();
         useUi.setState((s) => ({ paletteOpen: !s.paletteOpen }));
         return;
@@ -58,7 +59,7 @@ export function useGlobalShortcuts(): void {
       // While a window or picker is open, keys belong to it.
       if (mod || e.altKey || isTyping(e.target) || document.querySelector('[role="dialog"]')) return;
       // Setup has its own buttons; nothing else is reachable yet.
-      if (location.pathname.startsWith('/welcome')) return;
+      if (appPath().startsWith('/welcome')) return;
 
       const ui = useUi.getState();
       if (e.key === '?') return useUi.setState({ shortcutsOpen: true });
@@ -84,7 +85,7 @@ export function useGlobalShortcuts(): void {
       }
       if (key === 'k') return void takeBreak();
       // With a task under the cursor, F focuses that task (handled with the task shortcuts).
-      if (key === 'f' && activeTaskId() && !location.pathname.startsWith('/focus')) return;
+      if (key === 'f' && activeTaskId() && !appPath().startsWith('/focus')) return;
       if (key in goTo) void navigate({ to: goTo[key as keyof typeof goTo] });
     }
 
