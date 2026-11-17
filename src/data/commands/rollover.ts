@@ -5,6 +5,7 @@ import { planRollover } from '@/domain/rollover';
 import { command, db, getSettings } from '../db';
 import type { Id, ListEdge } from '../types';
 import { recordUndo } from '../undo';
+import { extendAllSeries } from './series';
 import { getRunningTimer } from './timer';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +32,22 @@ export const runRollover = command(async (): Promise<{ moved: number; archived: 
   const past = await db.tasks.where('[state+day]').between(['active', '0000-00-00'], ['active', day], true, false).toArray();
   const plan = planRollover(past, day, settings.archiveAfterDays);
 
+  // A recurring task left untouched does not pile up: when it would roll onto
+  // a day that already has the series' next instance, the old one is dropped.
+  // Changing an instance by hand makes it its own task, and it rolls as usual.
+  const byId = new Map(past.map((t) => [t.id, t]));
+  const todays = await db.tasks.where('[state+day]').equals(['active', day]).toArray();
+  const seriesToday = new Set(todays.flatMap((t) => (t.seriesId ? [t.seriesId] : [])));
+  const isSuperseded = (id: Id) => {
+    const task = byId.get(id);
+    return Boolean(task?.seriesId && !task.edited && seriesToday.has(task.seriesId));
+  };
+  // This applies whether the old instance was about to move or to be archived.
+  const superseded = [...plan.moves.map((m) => m.id), ...plan.archive].filter(isSuperseded);
+  plan.moves = plan.moves.filter((m) => !isSuperseded(m.id));
+  plan.archive = plan.archive.filter((id) => !isSuperseded(id));
+  await eraseTasks(superseded);
+
   if (plan.moves.length) {
     const existing = (await db.tasks.where('[state+day]').equals(['active', day]).toArray()).map((t) => t.order).sort(compareKeys);
     const keys =
@@ -50,6 +67,8 @@ export const runRollover = command(async (): Promise<{ moved: number; archived: 
     .filter((t) => (t.stateChangedAt ?? 0) < now() - TRASH_DAYS * DAY_MS)
     .map((t) => t.id);
   await eraseTasks(expired);
+
+  await extendAllSeries();
 
   return { moved: plan.moves.length, archived: plan.archive.length };
 });

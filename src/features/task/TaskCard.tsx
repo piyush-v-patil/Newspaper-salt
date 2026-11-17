@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, Flag, Target } from 'lucide-react';
+import { Clock, Flag, Repeat, Target } from 'lucide-react';
 import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
@@ -140,12 +140,17 @@ export function TaskCardBody({ task }: { task: Task }) {
         </ul>
       )}
 
-      {(channel || scheduled || task.rolloverDays > 0 || task.objectiveId) && (
+      {(channel || scheduled || task.rolloverDays > 0 || task.objectiveId || task.seriesId) && (
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5">
             {scheduled && (
               <span className="tabular text-[12px] font-medium text-accent" title="Scheduled on the calendar">
                 {formatClock(scheduled.startMin, timeFormat)}
+              </span>
+            )}
+            {task.seriesId && (
+              <span className="text-ink-3" title="Repeats">
+                <Repeat size={12} aria-label="Repeats" />
               </span>
             )}
             {task.objectiveId && (

@@ -78,12 +78,27 @@ export interface CalendarEvent {
   blocksTime: boolean;
 }
 
+export type RepeatKind = 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
+
+/** How often a recurring task comes round. */
+export interface Repeat {
+  kind: RepeatKind;
+  /** Every N days, weeks, months or years. Ignored for weekdays. */
+  interval: number;
+  /** For weekly: which days of the week, 0 for Sunday to 6 for Saturday. */
+  weekdays: number[];
+}
+
+/** A recurring task. Its instances are ordinary tasks that point back here. */
 export interface Series {
   id: Id;
-  rrule: string;
-  atRoughlyMin: number | null;
-  rigid: boolean;
-  template: Pick<Task, 'title' | 'notes' | 'channelId' | 'plannedMin'>;
+  repeat: Repeat;
+  startDay: Day;
+  /** Set when the series is stopped; no instance is created after this day. */
+  endDay: Day | null;
+  /** Instances exist for every occurrence up to and including this day. */
+  generatedThrough: Day;
+  template: Pick<Task, 'title' | 'notes' | 'channelId' | 'plannedMin'> & { subtasks: string[] };
 }
 
 export interface Context {

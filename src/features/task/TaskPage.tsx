@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { useSearch } from '@tanstack/react-router';
-import { Copy, Ellipsis, Trash2, X } from 'lucide-react';
+import { Copy, Ellipsis, Repeat, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   deleteTask,
@@ -18,6 +18,7 @@ import type { Task } from '@/data/types';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { ActualChip } from './ActualChip';
 import { NotesEditor } from './NotesEditor';
+import { RepeatDialog } from './RepeatDialog';
 import { Subtasks } from './Subtasks';
 import { TaskChips } from './TaskChips';
 import { useOpenTask } from './useOpenTask';
@@ -66,9 +67,11 @@ const menuItem =
 function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
   const subtasks = useSubtasks([task.id]).get(task.id) ?? [];
   const done = task.completedAt !== null;
+  const [repeatOpen, setRepeatOpen] = useState(false);
 
   return (
     <>
+      <RepeatDialog task={task} open={repeatOpen} onOpenChange={setRepeatOpen} />
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <TaskChips
@@ -92,6 +95,9 @@ function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Content align="end" sideOffset={6} className="z-50 min-w-[168px] rounded-lg border border-line bg-surface p-1 shadow-pop data-[state=open]:animate-pop">
+                <Menu.Item className={menuItem} onSelect={() => setRepeatOpen(true)}>
+                  <Repeat size={14} /> {task.seriesId ? 'Repeating…' : 'Repeat…'}
+                </Menu.Item>
                 <Menu.Item className={menuItem} onSelect={() => void duplicateTask(task.id)}>
                   <Copy size={14} /> Duplicate
                 </Menu.Item>

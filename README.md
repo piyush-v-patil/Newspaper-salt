@@ -33,7 +33,7 @@ npm run e2e        # browser tests against a production build
 
 ## Status
 
-Phases 0 to 4 of 8 are done.
+Phases 0 to 5 of 8 are done.
 
 - **Phase 0:** project foundation, local storage, undo, app shell, light and dark themes.
 - **Phase 1:** tasks and the board. Add-task window with typing shortcuts (`~` time, `#` channel, `@` date, `!` priority), task cards, task page with subtasks and rich-text notes, channels and filter, the Today view, the day-column board with drag and drop, and the task keyboard shortcuts.
@@ -42,6 +42,8 @@ Phases 0 to 4 of 8 are done.
 
 - **Phase 4:** the daily cycle. Unfinished tasks roll over at midnight with a count of consecutive days; a task that rolls over too long with no progress goes to the archive (threshold adjustable, restorable); deleted tasks wait a week in the trash; `Ctrl+F` searches. Daily planning (`P`) walks through a look back, adding tasks, checking the workload, finalizing and a written plan, and resumes where you left off. Daily shutdown (`O`) reviews the day, keeps its highlights and a reflection, and files them under Highlights. Both are offered at their set times once setup is complete, never interrupting a running timer.
 
+- **Phase 5:** the weekly cycle and longer horizons. Backlog with time buckets, folders and its own priority; weekly objectives with linked tasks and progress on the This week view (`N`); weekly planning and weekly review; recurring tasks (daily, weekdays, weekly on chosen days, monthly, yearly, every N) that create a month ahead, never pile up when skipped, and can be updated or stopped as a series.
+
 Not built yet within these phases: the month calendar range, turning an event into a task, repeating events, editing a time entry's start and end, showing tracked time on the calendar, and the faded "worked on this" copy a task leaves on earlier days.
 
-Weekly rituals, objectives, Backlog and Settings are placeholders until their phase.
+Settings and first-run setup are placeholders until Phase 6.
