@@ -3,7 +3,7 @@ import type { Day } from '@/domain/dates';
 import { compareKeys, keyAtEdge } from '@/domain/ordering';
 import { command, db } from '../db';
 import { emptyDayRecord } from '../queries';
-import type { DayRecord, Task } from '../types';
+import type { DayRecord, Id, Task } from '../types';
 import { stopRunningTimer } from './timer';
 
 async function patchDay(day: Day, patch: Partial<DayRecord>): Promise<void> {
@@ -71,3 +71,11 @@ export const finishShutdown = command(async (day: Day, patch: Partial<DayRecord>
 
 /** Turns a shut-down day back into a draft, so its highlights can be edited again. */
 export const reopenShutdown = command((day: Day): Promise<void> => patchDay(day, { shutdownStatus: 'in_progress' }));
+
+/** Stars or unstars one of a closed day's highlights. */
+export const toggleHighlightStar = command(async (day: Day, taskId: Id): Promise<void> => {
+  const record = await db.days.get(day);
+  if (!record) return;
+  const starred = record.starred ?? [];
+  await patchDay(day, { starred: starred.includes(taskId) ? starred.filter((id) => id !== taskId) : [...starred, taskId] });
+});

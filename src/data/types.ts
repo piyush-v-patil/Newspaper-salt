@@ -167,6 +167,8 @@ export interface DayRecord {
   shutdownMin: number | null;
   shutdownStatus: RitualStatus;
   highlights: Id[];
+  /** Highlights marked as the ones that mattered most. */
+  starred?: Id[];
   mood: string | null;
   reflection: string;
 }

@@ -175,9 +175,17 @@ test('daily shutdown reviews the day, keeps the highlights, and files them', asy
   // Finished tasks start as highlights; work in progress can be included.
   await expect(page.getByTestId('highlight')).toHaveText([/Shipped release/]);
   await page.getByRole('button', { name: 'Include' }).click();
-  await expect(page.getByTestId('highlight')).toHaveCount(2);
+  await expect(page.getByTestId('highlight')).toHaveText([/Shipped release/, /Half done/]);
+  // A starred highlight goes first; the rest can be reordered.
+  await page.getByRole('button', { name: 'Star Half done' }).click();
+  await expect(page.getByTestId('highlight')).toHaveText([/Half done/, /Shipped release/]);
+  await page.getByRole('button', { name: 'Unstar Half done' }).click();
+  await page.getByTestId('highlight').filter({ hasText: 'Half done' }).hover();
+  await page.getByRole('button', { name: 'Move Half done up' }).click();
+  await expect(page.getByTestId('highlight')).toHaveText([/Half done/, /Shipped release/]);
   await page.getByTestId('highlight').filter({ hasText: 'Half done' }).hover();
   await page.getByRole('button', { name: 'Remove Half done from highlights' }).click();
+  await page.getByRole('button', { name: 'Star Shipped release' }).click();
   await page.getByRole('radio', { name: 'Mood 🙂' }).click();
   await page.getByRole('textbox', { name: 'Reflection' }).fill('Today was steady. The release went out a day early.');
   await page.getByRole('button', { name: 'Done for the day' }).click();
@@ -197,6 +205,13 @@ test('daily shutdown reviews the day, keeps the highlights, and files them', asy
   await expect(day).toContainText('Shipped release');
   await expect(day).not.toContainText('Half done');
   await expect(day).toContainText('The release went out a day early.');
+
+  // Starred highlights can be shown on their own, and unstarred here too.
+  await page.getByRole('button', { name: 'Starred only' }).click();
+  await expect(day).toContainText('Shipped release');
+  await expect(day).not.toContainText('The release went out a day early.');
+  await page.getByRole('button', { name: 'Unstar Shipped release' }).click();
+  await expect(page.getByText('No starred highlights yet.', { exact: false })).toBeVisible();
 });
 
 test('the rituals are offered when their time comes', async ({ page }) => {

@@ -10,7 +10,7 @@ import { extractTokens } from '@/domain/tokens';
 import { relativeDayLabel } from '@/domain/dayLabels';
 import { useChannels, useContexts, useSettings } from '@/data/ReferenceData';
 import { weekStartOf } from '@/domain/weeks';
-import type { DailyPriority, Id, ListEdge, TaskDay } from '@/data/types';
+import type { BacklogFolder, DailyPriority, Id, ListEdge, Objective, Task, TaskDay } from '@/data/types';
 import { today } from '@/domain/clock';
 import { Chip } from './Chip';
 import { TaskChips } from './TaskChips';
@@ -61,7 +61,15 @@ function tokenAt(text: string, caret: number): Token | null {
   return { trigger, start: caret - query.length - 1, query };
 }
 
+/** Lists the typing shortcuts pick from. Loaded before the card opens, so a quick Enter finds them ready. */
+interface Lists {
+  objectives: Objective[];
+  openTasks: Task[];
+  folders: BacklogFolder[];
+}
+
 interface FormProps {
+  lists: Lists;
   initialDay: TaskDay;
   folderId: Id | null;
   onDone: () => void;
@@ -69,7 +77,8 @@ interface FormProps {
   menuOpenRef: RefObject<boolean>;
 }
 
-function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
+function AddTaskForm({ lists, initialDay, folderId, onDone, menuOpenRef }: FormProps) {
+  const { objectives, openTasks, folders } = lists;
   const { weekStartsOn, newTaskPosition } = useSettings();
   const [title, setTitle] = useState('');
   const [caret, setCaret] = useState(0);
@@ -83,12 +92,9 @@ function AddTaskForm({ initialDay, folderId, onDone, menuOpenRef }: FormProps) {
   // ">": add as a subtask of this task instead. "<": into this backlog folder.
   const [parentId, setParentId] = useState<Id | null>(null);
   const [folder, setFolder] = useState<Id | null>(folderId);
-  const openTasks = useOpenTasks();
-  const folders = useBacklogFolders();
   const parent = openTasks.find((t) => t.id === parentId);
   const folderName = folders.find((f) => f.id === folder)?.name;
   const [tip] = useState(() => TIPS[nextTip++ % TIPS.length]);
-  const objectives = useObjectives(weekStartOf(today(), weekStartsOn));
   const objective = objectives.find((o) => o.id === objectiveId);
   const input = useRef<HTMLInputElement>(null);
   const channels = useChannels();
@@ -338,6 +344,8 @@ export function AddTaskWindow() {
   const addWindow = useUi((s) => s.addWindow);
   const close = useUi((s) => s.closeAddTask);
   const menuOpenRef = useRef(false);
+  const { weekStartsOn } = useSettings();
+  const lists: Lists = { objectives: useObjectives(weekStartOf(today(), weekStartsOn)), openTasks: useOpenTasks(), folders: useBacklogFolders() };
 
   return (
     <Dialog.Root open={addWindow !== null} onOpenChange={(open) => !open && close()}>
@@ -351,7 +359,7 @@ export function AddTaskWindow() {
           className="fixed z-50 rounded-xl border border-line bg-surface shadow-pop outline-none data-[state=open]:animate-pop"
         >
           <Dialog.Title className="sr-only">Add task</Dialog.Title>
-          {addWindow && <AddTaskForm initialDay={addWindow.day ?? today()} folderId={addWindow.folderId} onDone={close} menuOpenRef={menuOpenRef} />}
+          {addWindow && <AddTaskForm lists={lists} initialDay={addWindow.day ?? today()} folderId={addWindow.folderId} onDone={close} menuOpenRef={menuOpenRef} />}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

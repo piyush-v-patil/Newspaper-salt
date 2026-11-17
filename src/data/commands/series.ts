@@ -38,24 +38,32 @@ async function addInstance(series: Series, day: Day): Promise<void> {
     createdAt: stamp,
     updatedAt: stamp,
   };
-  await db.tasks.add(task);
   let order: string | null = null;
   const subtasks: Subtask[] = series.template.subtasks.map((title) => {
     order = keyAtEdge(order ? [order] : [], 'bottom');
     return { id: crypto.randomUUID(), taskId: task.id, title, order, plannedMin: null, completedAt: null };
   });
-  await db.subtasks.bulkAdd(subtasks);
-  await timebox(series, task);
+  const session = await timeboxFor(series, task);
+  // All or nothing, so an instance never exists without its subtasks or timebox.
+  await db.transaction('rw', db.tasks, db.subtasks, db.sessions, async () => {
+    await db.tasks.add(task);
+    await db.subtasks.bulkAdd(subtasks);
+    if (session) await db.sessions.add(session);
+  });
 }
 
-/** With an "at roughly" time, an instance goes on the calendar at that time (unless it already is that day). */
-async function timebox(series: Pick<Series, 'atMin'>, task: Task): Promise<void> {
-  if (series.atMin == null || task.day === BACKLOG) return;
+/** With an "at roughly" time, the timebox an instance gets at that time (none if it is already on the calendar that day). */
+async function timeboxFor(series: Pick<Series, 'atMin'>, task: Task): Promise<Session | null> {
+  if (series.atMin == null || task.day === BACKLOG) return null;
   const existing = await db.sessions.where('taskId').equals(task.id).toArray();
-  if (existing.some((s) => s.day === task.day)) return;
+  if (existing.some((s) => s.day === task.day)) return null;
   const length = task.plannedMin ?? (await getSettings()).defaultSessionMin;
-  const session: Session = { id: crypto.randomUUID(), taskId: task.id, day: task.day, startMin: series.atMin, endMin: Math.min(series.atMin + length, 24 * 60) };
-  await db.sessions.add(session);
+  return { id: crypto.randomUUID(), taskId: task.id, day: task.day, startMin: series.atMin, endMin: Math.min(series.atMin + length, 24 * 60) };
+}
+
+async function timebox(series: Pick<Series, 'atMin'>, task: Task): Promise<void> {
+  const session = await timeboxFor(series, task);
+  if (session) await db.sessions.add(session);
 }
 
 /**
@@ -196,11 +204,14 @@ export const changeRepeat = command(async (taskId: Id, repeat: Repeat, atMin: nu
   const anchorSessions = await db.sessions.where('taskId').equals(taskId).toArray();
   const before = new Set((await db.tasks.where('seriesId').equals(series.id).primaryKeys()) as Id[]);
 
-  await db.sessions.bulkDelete(laterSessions.map((s) => s.id));
-  await db.subtasks.bulkDelete(laterSubtasks.map((s) => s.id));
-  await db.tasks.bulkDelete(laterIds);
   const next: Series = { ...series, repeat, atMin, startDay: anchor, generatedThrough: anchor, endDay: null };
-  await db.series.put(next);
+  // The old instances go and the new rule takes over together; the new instances follow.
+  await db.transaction('rw', db.tasks, db.subtasks, db.sessions, db.series, async () => {
+    await db.sessions.bulkDelete(laterSessions.map((s) => s.id));
+    await db.subtasks.bulkDelete(laterSubtasks.map((s) => s.id));
+    await db.tasks.bulkDelete(laterIds);
+    await db.series.put(next);
+  });
   // A newly chosen time also moves this instance's timebox, if it has one that day from the old time.
   if (atMin != null) {
     const old = anchorSessions.find((s) => s.day === anchor && series.atMin != null && s.startMin === series.atMin);

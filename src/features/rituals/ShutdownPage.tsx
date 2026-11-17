@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Star, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useToday } from '@/app/useToday';
 import { finishShutdown, reopenShutdown } from '@/data/commands/days';
@@ -23,8 +23,8 @@ const CLOSING_LINES = [
 ];
 
 /** The day's highlights as plain text, for the clipboard. */
-export function highlightsText(day: Day, titles: string[], mood: string | null, reflection: string): string {
-  const out = [`Highlights for ${longDayLabel(day)}${mood ? ` ${mood}` : ''}`, '', ...titles.map((t) => `- ${t}`)];
+export function highlightsText(day: Day, items: { title: string; starred: boolean }[], mood: string | null, reflection: string): string {
+  const out = [`Highlights for ${longDayLabel(day)}${mood ? ` ${mood}` : ''}`, '', ...items.map((t) => `- ${t.starred ? '★ ' : ''}${t.title}`)];
   if (reflection.trim()) out.push('', reflection.trim());
   return out.join('\n');
 }
@@ -85,6 +85,7 @@ export function ShutdownPage() {
 
   const [index, setIndex] = useState<number | null>(null);
   const [highlights, setHighlights] = useState<Id[]>([]);
+  const [starred, setStarred] = useState<Id[]>([]);
   const [mood, setMood] = useState<string | null>(null);
   const [reflection, setReflection] = useState('');
   const [copied, setCopied] = useState(false);
@@ -95,6 +96,7 @@ export function ShutdownPage() {
     const done = record.shutdownStatus === 'done';
     // First time through, every finished task starts as a highlight; trim from there.
     setHighlights(record.highlights.length || done ? record.highlights : worked.filter((t) => t.completedDay === day).map((t) => t.id));
+    setStarred(record.starred ?? []);
     setMood(record.mood);
     setReflection(record.reflection);
     setIndex(done ? 2 : 0);
@@ -104,13 +106,24 @@ export function ShutdownPage() {
   if (!loaded || index === null) return null;
 
   const byId = new Map(worked.map((t) => [t.id, t]));
-  const picked = highlights.flatMap((id) => byId.get(id) ?? []);
+  // Starred highlights come first; otherwise the order is the one chosen.
+  const ordered = [...highlights.filter((id) => starred.includes(id)), ...highlights.filter((id) => !starred.includes(id))];
+  const picked = ordered.flatMap((id) => byId.get(id) ?? []);
   const others = worked.filter((t) => !highlights.includes(t.id));
-  const text = highlightsText(day, picked.map((t) => t.title), mood, reflection);
+  const text = highlightsText(day, picked.map((t) => ({ title: t.title, starred: starred.includes(t.id) })), mood, reflection);
+  const move = (id: Id, by: -1 | 1) =>
+    setHighlights(() => {
+      const list = [...ordered];
+      const i = list.indexOf(id);
+      const j = i + by;
+      if (i < 0 || j < 0 || j >= list.length) return list;
+      [list[i], list[j]] = [list[j], list[i]];
+      return list;
+    });
   const home = () => void navigate({ to: settings.defaultView === 'board' ? '/board' : settings.defaultView === 'calendar' ? '/calendar' : '/today' });
 
   const finish = async () => {
-    await finishShutdown(day, { highlights: picked.map((t) => t.id), mood, reflection });
+    await finishShutdown(day, { highlights: picked.map((t) => t.id), starred: starred.filter((id) => highlights.includes(id)), mood, reflection });
     if (settings.celebrations) celebrate();
     setIndex(2);
   };
@@ -179,9 +192,28 @@ export function ShutdownPage() {
           </Guidance>
           <Column title="Highlights" hint={`${picked.length}`} width={400}>
             {picked.length === 0 && <p className="text-[13px] text-ink-3">No highlights picked. A quiet day is allowed.</p>}
-            {picked.map((t) => (
-              <div key={t.id} data-testid="highlight" className="group flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-[13.5px]">
-                <span className="min-w-0 flex-1 truncate">{t.title}</span>
+            {picked.map((t, i) => {
+              const star = starred.includes(t.id);
+              return (
+              <div key={t.id} data-testid="highlight" className={`group flex items-center gap-2 rounded-lg border px-3 py-2 text-[13.5px] ${star ? 'border-warn/50 bg-warn/5' : 'border-line'}`}>
+                <button
+                  type="button"
+                  aria-pressed={star}
+                  aria-label={star ? `Unstar ${t.title}` : `Star ${t.title}`}
+                  onClick={() => setStarred((ids) => (star ? ids.filter((id) => id !== t.id) : [...ids, t.id]))}
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded ${star ? 'text-warn' : 'text-ink-3 hover:text-warn'}`}
+                >
+                  <Star size={14} fill={star ? 'currentColor' : 'none'} />
+                </button>
+                <span className={`min-w-0 flex-1 truncate ${star ? 'font-medium' : ''}`}>{t.title}</span>
+                <span className="flex opacity-0 focus-within:opacity-100 group-hover:opacity-100">
+                  <button type="button" aria-label={`Move ${t.title} up`} disabled={i === 0} onClick={() => move(t.id, -1)} className="grid h-5 w-5 place-items-center rounded text-ink-3 hover:text-ink disabled:opacity-30">
+                    <ChevronUp size={13} />
+                  </button>
+                  <button type="button" aria-label={`Move ${t.title} down`} disabled={i === picked.length - 1} onClick={() => move(t.id, 1)} className="grid h-5 w-5 place-items-center rounded text-ink-3 hover:text-ink disabled:opacity-30">
+                    <ChevronDown size={13} />
+                  </button>
+                </span>
                 <button
                   type="button"
                   aria-label={`Remove ${t.title} from highlights`}
@@ -191,7 +223,8 @@ export function ShutdownPage() {
                   <X size={13} />
                 </button>
               </div>
-            ))}
+              );
+            })}
             {others.length > 0 && (
               <>
                 <h3 className="pt-3 text-[12px] font-medium uppercase tracking-wider text-ink-3">Other activity</h3>
