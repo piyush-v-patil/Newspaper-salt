@@ -25,6 +25,9 @@ interface UiState {
   workloadMode: WorkloadMode;
   /** The task that auto-scheduling could not fit, while the user decides what to do. */
   noRoomTaskId: Id | null;
+  /** The command palette (Ctrl+K) and the keyboard shortcut sheet (?). */
+  paletteOpen: boolean;
+  shortcutsOpen: boolean;
   setCalendarSpan: (span: CalendarSpan) => void;
   cycleWorkloadMode: () => void;
   setNoRoomTask: (id: Id | null) => void;
@@ -52,6 +55,8 @@ export const useUi = create<UiState>()(
       calendarSpan: 'week',
       workloadMode: 'all',
       noRoomTaskId: null,
+      paletteOpen: false,
+      shortcutsOpen: false,
       setCalendarSpan: (calendarSpan) => set({ calendarSpan }),
       cycleWorkloadMode: () =>
         set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : s.workloadMode === 'work' ? 'actual' : 'all' })),

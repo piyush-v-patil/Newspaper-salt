@@ -37,6 +37,13 @@ export function useGlobalShortcuts(): void {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
 
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        // The command palette opens from anywhere, even while typing.
+        if (location.pathname.startsWith('/welcome')) return;
+        e.preventDefault();
+        useUi.setState((s) => ({ paletteOpen: !s.paletteOpen }));
+        return;
+      }
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
         // Ctrl+F searches tasks rather than the page.
         e.preventDefault();
@@ -54,6 +61,7 @@ export function useGlobalShortcuts(): void {
       if (location.pathname.startsWith('/welcome')) return;
 
       const ui = useUi.getState();
+      if (e.key === '?') return useUi.setState({ shortcutsOpen: true });
       if (e.key === '<') return ui.toggleLeft();
       if (e.key === '>') return ui.toggleRight();
 

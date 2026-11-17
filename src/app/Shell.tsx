@@ -4,6 +4,8 @@ import { ReferenceDataProvider, useProfile } from '@/data/ReferenceData';
 import { NoRoomDialog } from '@/features/calendar/NoRoomDialog';
 import { FocusBar } from '@/features/focus/FocusBar';
 import { FocusNudges } from '@/features/focus/FocusNudges';
+import { ShortcutSheet } from '@/features/help/ShortcutSheet';
+import { CommandPalette } from '@/features/palette/CommandPalette';
 import { RitualPrompt } from '@/features/rituals/RitualPrompt';
 import { AddTaskWindow } from '@/features/task/AddTaskWindow';
 import { TaskDndRoot } from '@/features/task/TaskDnd';
@@ -61,6 +63,8 @@ function ShellBody() {
       <TaskPage />
       <NoRoomDialog />
       <RitualPrompt />
+      <CommandPalette />
+      <ShortcutSheet />
       <Celebration />
     </div>
   );
