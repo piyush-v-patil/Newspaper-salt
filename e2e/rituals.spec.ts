@@ -246,3 +246,26 @@ test('an evening planner plans tomorrow', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'What do you want to get done tomorrow?' })).toBeVisible();
   await expect(page.getByText('Wednesday, November 18')).toBeVisible();
 });
+
+test('a task worked on but not finished leaves a faded copy on the day it was worked on', async ({ page }) => {
+  await openAt(page, '2026-11-17T09:00:00');
+  await quickAdd(page, 'Long report ~3h');
+  await card(page, 'Long report').hover();
+  await page.keyboard.press(' ');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.clock.fastForward('01:30:00');
+  await page.keyboard.press(' ');
+  await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/today$/);
+
+  await reopenAt(page, '2026-11-18T09:00:00');
+  await expect(card(page, 'Long report')).toBeVisible();
+  await page.keyboard.press('Shift+ArrowLeft');
+  await expect(tasks(page)).toHaveCount(0);
+  const copy = page.getByTestId('worked-on');
+  await expect(copy).toContainText('Long report');
+  await expect(copy).toContainText('1:30');
+  await copy.click();
+  await expect(page.getByRole('dialog').getByLabel('Task title')).toHaveValue('Long report');
+});

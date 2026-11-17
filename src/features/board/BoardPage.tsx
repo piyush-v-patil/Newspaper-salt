@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useToday } from '@/app/useToday';
 import { useUi } from '@/app/uiStore';
-import { useTasksInRange } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
+import { useTasksInRange, useWorkedOn } from '@/data/queries';
+import type { WorkedOn } from '@/domain/workedOn';
+import { WorkedOnCards } from '@/features/task/WorkedOnCards';
 import type { Task } from '@/data/types';
 import { shiftDay, type Day } from '@/domain/dates';
 import { monthLabel, shortDate, weekdayName } from '@/domain/dayLabels';
@@ -19,8 +21,9 @@ const COLUMN_WIDTH = 280;
 const GAP = 24;
 const STRIDE = COLUMN_WIDTH + GAP;
 const PAGE = 7;
+const NONE: WorkedOn[] = [];
 
-function DayColumn({ day, tasks, isToday, focused, onFocus }: { day: Day; tasks: Task[]; isToday: boolean; focused: boolean; onFocus: () => void }) {
+function DayColumn({ day, tasks, worked, isToday, focused, onFocus }: { day: Day; tasks: Task[]; worked: WorkedOn[]; isToday: boolean; focused: boolean; onFocus: () => void }) {
   return (
     <section aria-label={`${weekdayName(day)} ${shortDate(day)}`} data-day={day} className="flex h-full shrink-0 flex-col" style={{ width: STRIDE, paddingLeft: GAP }}>
       <button type="button" onClick={onFocus} className="flex items-baseline gap-2 rounded px-1 pb-1 text-left">
@@ -32,7 +35,8 @@ function DayColumn({ day, tasks, isToday, focused, onFocus }: { day: Day; tasks:
       </div>
       <AddTaskRow day={day} />
       <div className="mt-2 min-h-0 flex-1 overflow-y-auto pb-6">
-        <TaskList listId={day} tasks={tasks} className="min-h-full" />
+        <TaskList listId={day} tasks={tasks} className={worked.length ? '' : 'min-h-full'} />
+        <WorkedOnCards items={worked} />
       </div>
     </section>
   );
@@ -63,6 +67,7 @@ export function BoardPage() {
     return result;
   }, [days, grouped, filter, channels]);
   const ordered = useTaskLists('board', lists);
+  const worked = useWorkedOn(days, current);
 
   const scrollToDay = useCallback(
     (day: Day, behavior: ScrollBehavior = 'smooth') => {
@@ -121,6 +126,7 @@ export function BoardPage() {
             key={day}
             day={day}
             tasks={ordered[day] ?? []}
+            worked={worked.get(day) ?? NONE}
             isToday={day === current}
             focused={day === (focusedDay ?? current)}
             onFocus={() => setFocusedDay(day)}

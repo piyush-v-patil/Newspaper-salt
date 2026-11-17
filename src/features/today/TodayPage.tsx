@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useToday } from '@/app/useToday';
 import { useEffect, useMemo } from 'react';
 import { useUi } from '@/app/uiStore';
-import { useTasksForDay } from '@/data/queries';
+import { useTasksForDay, useWorkedOn } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
 import { longDayLabel, shiftDay, type Day } from '@/domain/dates';
 import { matchesFilter } from '@/domain/filter';
@@ -12,6 +12,7 @@ import { ArchiveNotice } from '@/features/lists/ArchiveNotice';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
 import { TaskList, useTaskLists } from '@/features/task/TaskDnd';
 import { WorkloadCounter } from '@/features/task/WorkloadCounter';
+import { WorkedOnCards } from '@/features/task/WorkedOnCards';
 
 export function TodayPage({ date }: { date?: Day }) {
   const navigate = useNavigate();
@@ -25,6 +26,8 @@ export function TodayPage({ date }: { date?: Day }) {
   const tasks = useMemo(() => all?.filter((t) => matchesFilter(t, filter, channels)), [all, filter, channels]);
   const lists = useMemo(() => ({ [day]: tasks ?? [] }), [day, tasks]);
   const ordered = useTaskLists('today', lists);
+  const workedDays = useMemo(() => [day], [day]);
+  const worked = useWorkedOn(workedDays, current);
 
   useEffect(() => {
     setFocusedDay(day);
@@ -56,6 +59,7 @@ export function TodayPage({ date }: { date?: Day }) {
             </p>
           )}
           <TaskList listId={day} tasks={ordered[day] ?? []} />
+          <WorkedOnCards items={worked.get(day) ?? []} />
           {day === current && <ArchiveNotice day={day} />}
         </section>
       </div>

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
+import { workedOnByDay, type WorkedOn } from '@/domain/workedOn';
 import { db } from './db';
 import type { BacklogFolder, CalendarEvent, DayRecord, Objective, WeekRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
 
@@ -177,3 +178,22 @@ export function emptyWeekRecord(weekStart: Day): WeekRecord {
 export function useWeekRecord(weekStart: Day): WeekRecord | undefined {
   return useLiveQuery(async () => (await db.weeks.get(weekStart)) ?? emptyWeekRecord(weekStart), [weekStart]);
 }
+
+/** Faded copies of work done on past days for tasks that have since moved on, for the days shown. */
+export function useWorkedOn(days: Day[], today: Day): Map<Day, WorkedOn[]> {
+  const key = days.join(',');
+  const result = useLiveQuery(async () => {
+    const past = days.filter((d) => d < today);
+    if (past.length === 0) return new Map<Day, WorkedOn[]>();
+    const sorted = [...past].sort();
+    const start = new Date(`${sorted[0]}T00:00:00`).getTime();
+    const end = new Date(`${sorted[sorted.length - 1]}T00:00:00`).getTime() + 24 * 60 * 60 * 1000;
+    const entries = await db.timeEntries.where('start').between(start, end, true, false).toArray();
+    const subtasks = await db.subtasks.filter((s) => s.completedAt !== null && s.completedAt >= start && s.completedAt < end).toArray();
+    const ids = [...new Set([...entries.map((e) => e.taskId), ...subtasks.map((s) => s.taskId)])];
+    const tasks = new Map((await db.tasks.bulkGet(ids)).flatMap((t) => (t ? [[t.id, t] as const] : [])));
+    return workedOnByDay(entries, subtasks, tasks, past, today, Date.now());
+  }, [key, today]);
+  return result ?? EMPTY_WORKED_ON;
+}
+const EMPTY_WORKED_ON = new Map<Day, WorkedOn[]>();
