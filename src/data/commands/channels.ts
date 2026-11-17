@@ -1,6 +1,7 @@
 import { compareKeys, keyAtEdge } from '@/domain/ordering';
 import { command, db } from '../db';
-import type { Channel, Id } from '../types';
+import type { Channel, Context, Id } from '../types';
+import { recordUndo } from '../undo';
 
 /** Tag colours, assigned in turn so new channels look distinct. */
 export const CHANNEL_COLORS = [
@@ -31,4 +32,54 @@ export const createChannel = command(async (name: string, contextId: Id | null =
   };
   await db.channels.add(channel);
   return channel;
+});
+
+/** Renames, recolours, moves, enables or disables a channel. Making one the default clears the others. */
+export const updateChannel = command(async (id: Id, patch: Partial<Omit<Channel, 'id'>>): Promise<void> => {
+  const next = { ...patch };
+  if (next.name !== undefined) {
+    next.name = normalizeChannelName(next.name);
+    if (!next.name) return;
+  }
+  if (next.isDefault) {
+    for (const other of await db.channels.toArray()) if (other.isDefault && other.id !== id) await db.channels.update(other.id, { isDefault: false });
+  }
+  await db.channels.update(id, next);
+});
+
+export const createContext = command(async (name: string): Promise<Context> => {
+  const clean = name.trim();
+  if (!clean) throw new Error('A context needs a name.');
+  const all = await db.contexts.toArray();
+  const context: Context = {
+    id: crypto.randomUUID(),
+    name: clean,
+    color: CHANNEL_COLORS[(all.length * 5) % CHANNEL_COLORS.length],
+    isPersonal: false,
+    order: keyAtEdge(all.map((c) => c.order).sort(compareKeys), 'bottom'),
+  };
+  await db.contexts.add(context);
+  return context;
+});
+
+export const updateContext = command(async (id: Id, patch: Partial<Omit<Context, 'id'>>): Promise<void> => {
+  if (patch.name !== undefined && !patch.name.trim()) return;
+  await db.contexts.update(id, patch);
+});
+
+/** Deletes a context. Its channels stay, without a context. */
+export const deleteContext = command(async (id: Id): Promise<void> => {
+  const context = await db.contexts.get(id);
+  if (!context) return;
+  const channels = await db.channels.where('contextId').equals(id).toArray();
+  await db.contexts.delete(id);
+  for (const channel of channels) await db.channels.update(channel.id, { contextId: null });
+  recordUndo(
+    `Context “${context.name}” deleted`,
+    async () => {
+      await db.contexts.put(context);
+      for (const channel of channels) await db.channels.update(channel.id, { contextId: id });
+    },
+    true,
+  );
 });

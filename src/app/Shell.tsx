@@ -1,5 +1,6 @@
-import { Outlet, useRouterState } from '@tanstack/react-router';
-import { ReferenceDataProvider } from '@/data/ReferenceData';
+import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { ReferenceDataProvider, useProfile } from '@/data/ReferenceData';
 import { NoRoomDialog } from '@/features/calendar/NoRoomDialog';
 import { FocusBar } from '@/features/focus/FocusBar';
 import { FocusNudges } from '@/features/focus/FocusNudges';
@@ -34,7 +35,15 @@ function ShellBody() {
   useDayChange();
   // Focus mode clears the panels away; the navigation still slides in from the left edge.
   // The same goes for the rituals, which bring their own columns.
-  const focusing = useRouterState({ select: (s) => /^\/(focus|plan|shutdown|weekly)/.test(s.location.pathname) });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const focusing = /^\/(focus|plan|shutdown|weekly|welcome)/.test(pathname);
+
+  // Until the first plan is made, setup is the only way in.
+  const navigate = useNavigate();
+  const settingUp = useProfile().onboardingCompletedAt === null;
+  useEffect(() => {
+    if (settingUp && !/^\/(welcome|plan)/.test(pathname)) void navigate({ to: '/welcome', replace: true });
+  }, [settingUp, pathname, navigate]);
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-canvas text-ink">

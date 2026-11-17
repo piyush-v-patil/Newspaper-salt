@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 async function openAt(page: Page, time: string) {
   await page.clock.install({ time: new Date(`2026-11-17T${time}:00`) });

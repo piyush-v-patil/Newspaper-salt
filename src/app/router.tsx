@@ -1,4 +1,5 @@
-import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Navigate } from '@tanstack/react-router';
+import { useSettings } from '@/data/ReferenceData';
 import { isDay, type Day } from '@/domain/dates';
 import { BoardPage } from '@/features/board/BoardPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
@@ -9,6 +10,7 @@ import { ShutdownPage } from '@/features/rituals/ShutdownPage';
 import { BacklogPage } from '@/features/lists/BacklogPage';
 import { WeekPage } from '@/features/week/WeekPage';
 import { WeeklyPlanPage, WeeklyReviewPage } from '@/features/rituals/WeeklyPages';
+import { SetupPage } from '@/features/setup/SetupPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -24,10 +26,13 @@ const parent = () => rootRoute;
 const indexRoute = createRoute({
   getParentRoute: parent,
   path: '/',
-  beforeLoad: () => {
-    throw redirect({ to: '/today' });
+  // Opens on the view chosen in Settings.
+  component: function Home() {
+    const { defaultView } = useSettings();
+    return <Navigate to={defaultView === 'board' ? '/board' : defaultView === 'calendar' ? '/calendar' : '/today'} replace />;
   },
 });
+const welcomeRoute = createRoute({ getParentRoute: parent, path: '/welcome', component: SetupPage });
 
 const todayRoute = createRoute({
   getParentRoute: parent,
@@ -90,6 +95,7 @@ const settingsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  welcomeRoute,
   todayRoute,
   weekRoute,
   boardRoute,

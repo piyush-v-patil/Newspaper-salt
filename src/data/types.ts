@@ -165,6 +165,8 @@ export interface Profile {
   onboardingCompletedAt: number | null;
   /** Coached planning runs for the first sessions, then stops. */
   guidedPlansRemaining: number;
+  /** How far through the first-run setup screens the person has got. */
+  setupStep: number;
 }
 
 export type DarkMode = 'on' | 'off' | 'system';

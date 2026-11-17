@@ -50,6 +50,8 @@ export function useGlobalShortcuts(): void {
       }
       // While a window or picker is open, keys belong to it.
       if (mod || e.altKey || isTyping(e.target) || document.querySelector('[role="dialog"]')) return;
+      // Setup has its own buttons; nothing else is reachable yet.
+      if (location.pathname.startsWith('/welcome')) return;
 
       const ui = useUi.getState();
       if (e.key === '<') return ui.toggleLeft();

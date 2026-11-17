@@ -32,5 +32,5 @@ export const defaultSettings: Settings = {
 };
 
 export function newProfile(createdAt: number): Profile {
-  return { name: '', createdAt, onboardingCompletedAt: null, guidedPlansRemaining: 3 };
+  return { name: '', createdAt, onboardingCompletedAt: null, guidedPlansRemaining: 3, setupStep: 0 };
 }

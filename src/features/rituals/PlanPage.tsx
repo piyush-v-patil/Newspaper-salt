@@ -2,11 +2,12 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToday } from '@/app/useToday';
 import { finishPlanning, updateDayRecord } from '@/data/commands/days';
+import { recordPlanFinished } from '@/data/commands/profile';
 import { workingWindow } from '@/data/commands/sessions';
 import { updateSettings } from '@/data/commands/settings';
 import { setTaskCompleted } from '@/data/commands/tasks';
 import { useDayRecord, useTasksForDay } from '@/data/queries';
-import { useChannelMap, useSettings } from '@/data/ReferenceData';
+import { useChannelMap, useProfile, useSettings } from '@/data/ReferenceData';
 import { BACKLOG, type Task } from '@/data/types';
 import { formatClock, formatMinutes, longDayLabel, shiftDay, type Day } from '@/domain/dates';
 import { nextWeekStart, relativeDayLabel } from '@/domain/dayLabels';
@@ -21,6 +22,23 @@ import { Kbd } from '@/ui/Kbd';
 import { Column, Guidance, RitualFrame } from './RitualFrame';
 
 type Step = 'reflect' | 'add' | 'wait' | 'finalize' | 'summary';
+
+/** Extra guidance shown during the first few plans. */
+const COACHING: Record<Step, string> = {
+  reflect: 'Looking back first keeps yesterday’s loose ends from quietly disappearing.',
+  add: 'Get it all down first; deciding what fits comes next. Estimates do not need to be exact: round to 15 minutes.',
+  wait: 'The bar compares your work tasks with your daily limit. Moving something to tomorrow is not failing; it is planning.',
+  finalize: 'Order by what matters, not by what is easy. Timeboxing the first task or two is usually enough.',
+  summary: 'Writing the plan down makes it real. Name one thing that could get in the way, so it does not catch you off guard.',
+};
+
+function Coach({ text }: { text: string }) {
+  return (
+    <p data-testid="coach" className="rounded-lg bg-accent-soft px-3 py-2.5 text-[13px] leading-relaxed text-ink">
+      {text}
+    </p>
+  );
+}
 
 const toTimeInput = (min: number) => formatClock(min, '24h');
 const fromTimeInput = (value: string) => {
@@ -47,6 +65,7 @@ function planText(day: Day, tasks: Task[], channelName: (task: Task) => string |
 export function PlanPage({ date }: { date?: Day }) {
   const navigate = useNavigate();
   const settings = useSettings();
+  const coached = useProfile().guidedPlansRemaining > 0;
   const channels = useChannelMap();
   const current = useToday();
   const day = date ?? planningTarget(settings.planningMin, current);
@@ -118,6 +137,7 @@ export function PlanPage({ date }: { date?: Day }) {
   };
   const finish = async () => {
     await finishPlanning(day, { planText: text, obstacles, shutdownMin, planStep: 0 });
+    await recordPlanFinished();
     if (skipSummary) await updateSettings({ planSummaryStep: false });
     if (settings.celebrations) celebrate();
     await navigate({ to: settings.defaultView === 'board' ? '/board' : settings.defaultView === 'calendar' ? '/calendar' : '/today' });
@@ -140,6 +160,7 @@ export function PlanPage({ date }: { date?: Day }) {
           <Guidance prompt="How did yesterday go?">
             <p>You didn’t shut down yesterday, so here is a quick look back before planning.</p>
             <p>Check off anything you actually finished. Whatever is left has been carried over to {dayLabel}.</p>
+                      {coached && <Coach text={COACHING.reflect} />}
           </Guidance>
           <Column title="Finished" hint={`${finishedBefore.length}`} width={360}>
             {finishedBefore.length === 0 && <p className="text-[13px] text-ink-3">Nothing was checked off.</p>}
@@ -164,6 +185,7 @@ export function PlanPage({ date }: { date?: Day }) {
             <p>
               Give each task a time with <Kbd>W</Kbd> and a channel with <Kbd>Q</Kbd>, or type <Kbd>~</Kbd> and <Kbd>#</Kbd> as you add it.
             </p>
+                      {coached && <Coach text={COACHING.add} />}
           </Guidance>
           <Column title={relativeDayLabel(day, current)} hint={<WorkloadHint tasks={tasks} />} width={380}>
             <AddTaskRow day={day} />
@@ -183,6 +205,7 @@ export function PlanPage({ date }: { date?: Day }) {
             <p>
               Drag a task to a later day, press <Kbd>D</Kbd> to push it one day, or <Kbd>Z</Kbd> to send it to the backlog.
             </p>
+                      {coached && <Coach text={COACHING.wait} />}
           </Guidance>
           <Column title={relativeDayLabel(day, current)} width={380}>
             <WorkloadCounter day={day} tasks={tasks} />
@@ -219,6 +242,7 @@ export function PlanPage({ date }: { date?: Day }) {
                 className="w-[120px] rounded-md border border-line bg-surface px-2 py-1.5 text-[13.5px]"
               />
             </label>
+                      {coached && <Coach text={COACHING.finalize} />}
           </Guidance>
           <Column title={relativeDayLabel(day, current)} width={380}>
             <WorkloadCounter day={day} tasks={tasks} />
@@ -234,6 +258,7 @@ export function PlanPage({ date }: { date?: Day }) {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-[560px] flex-col gap-5 px-6 py-10">
             <h1 className="text-[22px] font-semibold tracking-tight">Your plan for {dayLabel}</h1>
+            {coached && <Coach text={COACHING.summary} />}
             <ul className="flex flex-col gap-1.5">
               {tasks.map((t) => (
                 <li key={t.id} className="flex items-baseline gap-2 text-[14.5px]">

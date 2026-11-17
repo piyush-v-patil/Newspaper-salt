@@ -1,5 +1,6 @@
 import { useUi } from '@/app/uiStore';
 import { createChannel } from '@/data/commands/channels';
+import { db } from '@/data/db';
 import { createTask } from '@/data/commands/tasks';
 import type { BacklogBucket, DailyPriority, Id, ListEdge, Task, TaskDay } from '@/data/types';
 import { extractTokens } from '@/domain/tokens';
@@ -29,6 +30,8 @@ export async function createFromText(text: string, extras: Extras): Promise<Task
     const { filter } = useUi.getState();
     if (filter?.kind === 'channel') channelId = filter.id;
   }
+  // Otherwise the default channel, if one is set.
+  if (!channelId) channelId = (await db.channels.toArray()).find((c) => c.isDefault && c.enabled)?.id ?? null;
 
   return createTask({
     title: parsed.title,

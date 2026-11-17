@@ -57,7 +57,7 @@ export function useTaskShortcuts(): void {
     async function onKeyDown(e: KeyboardEvent) {
       if (e.altKey || isTyping(e.target) || document.querySelector('[role="dialog"]')) return;
       // Focus mode has one task and its own keys.
-      if (location.pathname.startsWith('/focus')) return;
+      if (/^\/(focus|welcome)/.test(location.pathname)) return;
       const mod = e.ctrlKey || e.metaKey;
       const focus = useTaskFocus.getState();
 

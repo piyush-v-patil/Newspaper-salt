@@ -87,7 +87,8 @@ export async function getSettings(): Promise<Settings> {
 
 export async function getProfile(): Promise<Profile> {
   const row = await db.meta.get('profile');
-  return (row?.value as Profile) ?? newProfile(Date.now());
+  // Older profiles may lack newer fields; fill them from the defaults.
+  return { ...newProfile(Date.now()), ...((row?.value as Partial<Profile>) ?? {}) };
 }
 
 let tail: Promise<unknown> = Promise.resolve();

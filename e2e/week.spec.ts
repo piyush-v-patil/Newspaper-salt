@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 async function openAt(page: Page, dateTime: string) {
   await page.clock.install({ time: new Date(dateTime) });
@@ -51,6 +52,7 @@ test('weekly objectives collect tasks, track time and progress, and link from an
   await card(page, 'Phone screens').hover();
   await page.keyboard.press('r');
   await page.getByPlaceholder('Link to an objective').fill('hire');
+  await expect(page.getByRole('option', { name: 'Hire designer' })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(card(page, 'Phone screens')).toContainText('This week');
 

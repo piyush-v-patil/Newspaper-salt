@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, setSettings, test } from './fixtures';
 
 async function openAt(page: Page, dateTime: string) {
   await page.clock.install({ time: new Date(dateTime) });
@@ -11,18 +12,6 @@ async function reopenAt(page: Page, dateTime: string) {
   await page.clock.setSystemTime(new Date(dateTime));
   await page.reload();
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
-}
-
-/** Marks setup as finished, which is what turns the ritual prompts on. */
-async function finishSetup(page: Page, name = 'Pi') {
-  await page.evaluate(async (profileName) => {
-    const open = indexedDB.open('life-of-pi');
-    const db: IDBDatabase = await new Promise((resolve) => (open.onsuccess = () => resolve(open.result)));
-    const tx = db.transaction('meta', 'readwrite');
-    tx.objectStore('meta').put({ key: 'profile', value: { name: profileName, createdAt: 1, onboardingCompletedAt: 1, guidedPlansRemaining: 0 } });
-    await new Promise((resolve) => (tx.oncomplete = resolve));
-    db.close();
-  }, name);
 }
 
 const tasks = (page: Page) => page.getByTestId('task');
@@ -219,14 +208,9 @@ test('daily shutdown reviews the day, keeps the highlights, and files them', asy
   await expect(day).toContainText('The release went out a day early.');
 });
 
-test('the rituals are offered when their time comes, once setup is finished', async ({ page }) => {
+test('the rituals are offered when their time comes', async ({ page }) => {
   await openAt(page, '2026-11-17T08:45:00');
-  // Before setup is finished nothing interrupts, though the navigation shows planning is due.
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(nav(page).getByRole('link', { name: /Plan/ }).first()).toContainText('Start');
-
-  await finishSetup(page);
-  await page.reload();
+  await setSettings(page, { autoPlanning: true, autoShutdown: true });
   const prompt = page.getByRole('dialog');
   await expect(prompt).toContainText('Good morning, Pi. Ready to plan?');
   await prompt.getByRole('button', { name: 'Later' }).click();
@@ -256,18 +240,7 @@ test('the rituals are offered when their time comes, once setup is finished', as
 
 test('an evening planner plans tomorrow', async ({ page }) => {
   await openAt(page, '2026-11-17T18:00:00');
-  await page.evaluate(async () => {
-    const open = indexedDB.open('life-of-pi');
-    const db: IDBDatabase = await new Promise((resolve) => (open.onsuccess = () => resolve(open.result)));
-    const tx = db.transaction('meta', 'readwrite');
-    const store = tx.objectStore('meta');
-    const current: { value: object } = await new Promise((resolve) => (store.get('settings').onsuccess = (e) => resolve((e.target as IDBRequest).result)));
-    store.put({ key: 'settings', value: { ...current.value, planningMin: 18 * 60 } });
-    await new Promise((resolve) => (tx.oncomplete = resolve));
-    db.close();
-  });
-  await page.reload();
-  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  await setSettings(page, { planningMin: 18 * 60 });
   await page.keyboard.press('p');
   await expect(page.getByRole('heading', { name: 'What do you want to get done tomorrow?' })).toBeVisible();
   await expect(page.getByText('Wednesday, November 18')).toBeVisible();
