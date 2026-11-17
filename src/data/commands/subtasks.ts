@@ -3,6 +3,7 @@ import { compareKeys, keyAtEdge } from '@/domain/ordering';
 import { command, db } from '../db';
 import type { Id, Subtask } from '../types';
 import { recordUndo } from '../undo';
+import { begin, getRunningTimer } from './timer';
 
 export const addSubtask = command(async (taskId: Id, title: string): Promise<Subtask> => {
   const text = title.trim();
@@ -45,6 +46,8 @@ export const setSubtaskCompleted = command(async (id: Id, completed: boolean): P
     await db.subtasks.update(id, { completedAt: completed ? now() : null });
     if (completed) await db.tasks.update(before.taskId, { lastActivityDay: today(), updatedAt: now() });
   });
+  // Finishing the subtask being timed carries on timing the task itself.
+  if (completed && (await getRunningTimer())?.subtaskId === id) await begin(before.taskId, null);
   recordUndo(completed ? 'Complete subtask' : 'Reopen subtask', async () => {
     await db.transaction('rw', db.tasks, db.subtasks, async () => {
       await db.subtasks.update(id, { completedAt: before.completedAt });
@@ -59,5 +62,15 @@ export const deleteSubtask = command(async (id: Id): Promise<void> => {
   await db.subtasks.delete(id);
   recordUndo('Delete subtask', async () => {
     await db.subtasks.add(before);
+  });
+});
+
+/** A subtask's own estimate. */
+export const setSubtaskPlanned = command(async (id: Id, plannedMin: number | null): Promise<void> => {
+  const before = await db.subtasks.get(id);
+  if (!before) return;
+  await db.subtasks.update(id, { plannedMin });
+  recordUndo('Set planned time', async () => {
+    await db.subtasks.update(id, { plannedMin: before.plannedMin });
   });
 });

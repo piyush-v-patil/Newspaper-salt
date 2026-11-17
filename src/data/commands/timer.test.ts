@@ -4,7 +4,8 @@ import { actualByTask, formatElapsed, msToMinutes } from '@/domain/time';
 import { db } from '../db';
 import { clearUndo, undoLast } from '../undo';
 import { createTask, setTaskCompleted } from './tasks';
-import { deleteTimeEntry, getRunningTimer, setActualForDay, startTimer, stopTimer, toggleTimer } from './timer';
+import { addSubtask, setSubtaskCompleted } from './subtasks';
+import { addTimeEntry, deleteTimeEntry, getRunningTimer, setActualForDay, startTimer, stopTimer, toggleSubtaskTimer, toggleTimer, updateTimeEntry } from './timer';
 
 const DAY = '2026-11-17';
 let clock = 0;
@@ -162,5 +163,60 @@ describe('count planned time as actual', () => {
     advance(10);
     await setTaskCompleted(tracked.id, true);
     expect(await minutesFor(tracked.id)).toBe(10);
+  });
+});
+
+describe('subtask timing and editing entries', () => {
+  it('times a subtask, and finishing it carries on timing the task', async () => {
+    const task = await createTask({ title: 'Launch' });
+    const sub = await addSubtask(task.id, 'Write copy');
+    expect(await toggleSubtaskTimer(task.id, sub.id)).toBe(true);
+    expect((await getRunningTimer())?.subtaskId).toBe(sub.id);
+    advance(20);
+    await setSubtaskCompleted(sub.id, true);
+    const running = await getRunningTimer();
+    expect(running?.taskId).toBe(task.id);
+    expect(running?.subtaskId).toBeNull();
+    advance(10);
+    await stopTimer();
+    const entries = await db.timeEntries.orderBy('start').toArray();
+    expect(entries.map((e) => [e.subtaskId, msToMinutes(e.end! - e.start)])).toEqual([
+      [sub.id, 20],
+      [null, 10],
+    ]);
+    // The task's total includes both.
+    expect(await minutesFor(task.id)).toBe(30);
+  });
+
+  it('pressing play on the running subtask pauses it', async () => {
+    const task = await createTask({ title: 'Launch' });
+    const sub = await addSubtask(task.id, 'Write copy');
+    await toggleSubtaskTimer(task.id, sub.id);
+    advance(5);
+    expect(await toggleSubtaskTimer(task.id, sub.id)).toBe(false);
+    expect(await getRunningTimer()).toBeNull();
+  });
+
+  it('changes an entry’s start and end, refuses impossible spans, and undoes', async () => {
+    const task = await createTask({ title: 'Launch' });
+    await startTimer(task.id);
+    advance(30);
+    await stopTimer();
+    const [entry] = await db.timeEntries.toArray();
+    const start = new Date(2026, 10, 17, 8, 0).getTime();
+    await updateTimeEntry(entry.id, start, start + 45 * 60_000);
+    expect(await minutesFor(task.id)).toBe(45);
+    await expect(updateTimeEntry(entry.id, start, start - 60_000)).rejects.toThrow('after the start');
+    await expect(updateTimeEntry(entry.id, start, clock + 60_000)).rejects.toThrow('up to now');
+    await undoLast();
+    expect(await minutesFor(task.id)).toBe(30);
+  });
+
+  it('logs a stretch of time by hand', async () => {
+    const task = await createTask({ title: 'Launch' });
+    const start = new Date(2026, 10, 16, 14, 0).getTime();
+    await addTimeEntry(task.id, start, start + 90 * 60_000);
+    expect(await minutesFor(task.id, '2026-11-16')).toBe(90);
+    expect((await db.tasks.get(task.id))?.lastActivityDay).toBe('2026-11-16');
   });
 });

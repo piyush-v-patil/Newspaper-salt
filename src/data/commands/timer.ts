@@ -23,7 +23,8 @@ export async function stopRunningTimer(): Promise<void> {
   await db.meta.delete('timer');
 }
 
-async function begin(taskId: Id, subtaskId: Id | null): Promise<void> {
+/** Stops whatever is running and starts timing a task (or one of its subtasks). Shared by the commands here and in subtasks. */
+export async function begin(taskId: Id, subtaskId: Id | null): Promise<void> {
   await stopRunningTimer();
   const entry: TimeEntry = { id: crypto.randomUUID(), taskId, subtaskId, start: now(), end: null };
   await db.timeEntries.add(entry);
@@ -82,4 +83,45 @@ export const deleteTimeEntry = command(async (id: Id): Promise<void> => {
   recordUndo('Delete time entry', async () => {
     await db.timeEntries.put(entry);
   });
+});
+
+/** The play button on a subtask: stop if that subtask is being timed, otherwise time it. Returns whether a timer is now running. */
+export const toggleSubtaskTimer = command(async (taskId: Id, subtaskId: Id): Promise<boolean> => {
+  const running = await getRunningTimer();
+  if (running?.subtaskId === subtaskId) {
+    await stopRunningTimer();
+    return false;
+  }
+  await begin(taskId, subtaskId);
+  return true;
+});
+
+function checkSpan(start: number, end: number): void {
+  if (!Number.isFinite(start) || !Number.isFinite(end)) throw new Error('Enter a start and an end time.');
+  if (end <= start) throw new Error('The end has to be after the start.');
+  if (end > now()) throw new Error('Time can only be logged up to now.');
+}
+
+/** Changes when a finished entry started and ended. */
+export const updateTimeEntry = command(async (id: Id, start: number, end: number): Promise<void> => {
+  const before = await db.timeEntries.get(id);
+  const running = await getRunningTimer();
+  if (!before || before.end === null || running?.entryId === id) return;
+  checkSpan(start, end);
+  await db.timeEntries.update(id, { start, end });
+  recordUndo('Edit time entry', async () => {
+    await db.timeEntries.update(id, { start: before.start, end: before.end });
+  });
+});
+
+/** Logs a stretch of time worked by hand, with its start and end. */
+export const addTimeEntry = command(async (taskId: Id, start: number, end: number, subtaskId: Id | null = null): Promise<TimeEntry> => {
+  checkSpan(start, end);
+  const entry: TimeEntry = { id: crypto.randomUUID(), taskId, subtaskId, start, end };
+  await db.timeEntries.add(entry);
+  await db.tasks.update(taskId, { lastActivityDay: entryDay(entry), updatedAt: now() });
+  recordUndo('Log time', async () => {
+    await db.timeEntries.delete(entry.id);
+  });
+  return entry;
 });

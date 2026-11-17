@@ -1,12 +1,59 @@
-import { Plus, X } from 'lucide-react';
+import { Clock, Pause, Play, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { addSubtask, deleteSubtask, renameSubtask, setSubtaskCompleted } from '@/data/commands/subtasks';
-import type { Id, Subtask } from '@/data/types';
+import { useNow } from '@/app/useNow';
+import { addSubtask, deleteSubtask, renameSubtask, setSubtaskCompleted, setSubtaskPlanned } from '@/data/commands/subtasks';
+import { toggleSubtaskTimer } from '@/data/commands/timer';
+import { useRunningTimer, useTimeEntries } from '@/data/queries';
+import type { Id, RunningTimer, Subtask } from '@/data/types';
+import { formatMinutes } from '@/domain/dates';
+import { msToMinutes } from '@/domain/time';
 import { CheckCircle } from '@/ui/CheckCircle';
+import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/ui/Popover';
+import { TimePicker } from './pickers/pickers';
 import { useTaskFocus } from './taskFocus';
 
-function SubtaskRow({ subtask, onEnter }: { subtask: Subtask; onEnter: () => void }) {
+/** Actual against planned for one subtask; clicking sets its estimate. */
+function SubtaskTime({ subtask, actualMs, running }: { subtask: Subtask; actualMs: number; running: boolean }) {
+  const [open, setOpen] = useState(false);
+  const actualMin = msToMinutes(actualMs);
+  const shown = actualMin > 0 || running || subtask.plannedMin !== null;
+  return (
+    <PopoverRoot open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={subtask.plannedMin === null ? `Set planned time for ${subtask.title}` : `Planned time for ${subtask.title}: ${formatMinutes(subtask.plannedMin)}`}
+          className={`tabular flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[12px] text-ink-2 hover:text-ink ${
+            shown ? 'bg-hover' : 'opacity-0 hover:bg-hover focus-visible:opacity-100 group-hover:opacity-100'
+          }`}
+        >
+          {shown ? (
+            <>
+              <span className={running ? 'font-medium text-accent' : ''}>{formatMinutes(actualMin)}</span>
+              <span className="text-ink-3">/</span>
+              <span>{subtask.plannedMin === null ? '–:––' : formatMinutes(subtask.plannedMin)}</span>
+            </>
+          ) : (
+            <Clock size={13} />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent label="Planned time">
+        <TimePicker
+          value={subtask.plannedMin}
+          onPick={(m) => {
+            void setSubtaskPlanned(subtask.id, m);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </PopoverRoot>
+  );
+}
+
+function SubtaskRow({ subtask, onEnter, actualMs, timer }: { subtask: Subtask; onEnter: () => void; actualMs: number; timer: RunningTimer | null }) {
   const done = subtask.completedAt !== null;
+  const running = timer?.subtaskId === subtask.id;
   return (
     <li className="group flex items-center gap-2.5 rounded-md px-1 py-1 hover:bg-hover">
       <CheckCircle
@@ -32,6 +79,19 @@ function SubtaskRow({ subtask, onEnter }: { subtask: Subtask; onEnter: () => voi
         }}
         className={`min-w-0 flex-1 bg-transparent text-[14px] outline-none ${done ? 'text-ink-3 line-through' : ''}`}
       />
+      <SubtaskTime subtask={subtask} actualMs={actualMs} running={running} />
+      {!done && (
+        <button
+          type="button"
+          aria-label={running ? `Pause ${subtask.title}` : `Start ${subtask.title}`}
+          onClick={() => void toggleSubtaskTimer(subtask.taskId, subtask.id)}
+          className={`grid h-6 w-6 shrink-0 place-items-center rounded hover:bg-surface ${
+            running ? 'text-accent' : 'text-ink-3 opacity-0 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100'
+          }`}
+        >
+          {running ? <Pause size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
+        </button>
+      )}
       <button
         type="button"
         aria-label={`Delete ${subtask.title}`}
@@ -46,6 +106,15 @@ function SubtaskRow({ subtask, onEnter }: { subtask: Subtask; onEnter: () => voi
 
 export function Subtasks({ taskId, subtasks }: { taskId: Id; subtasks: Subtask[] }) {
   const [draft, setDraft] = useState('');
+  const entries = useTimeEntries(taskId);
+  const timer = useRunningTimer();
+  const ticking = timer?.taskId === taskId && timer.subtaskId !== null;
+  const nowMs = useNow(1000, ticking);
+  const actual = new Map<Id, number>();
+  for (const e of entries) {
+    if (!e.subtaskId) continue;
+    actual.set(e.subtaskId, (actual.get(e.subtaskId) ?? 0) + ((e.end ?? nowMs) - e.start));
+  }
   const add = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,7 +136,7 @@ export function Subtasks({ taskId, subtasks }: { taskId: Id; subtasks: Subtask[]
     <div className="flex flex-col gap-0.5">
       <ul className="flex flex-col gap-0.5">
         {subtasks.map((s) => (
-          <SubtaskRow key={s.id} subtask={s} onEnter={() => add.current?.focus()} />
+          <SubtaskRow key={s.id} subtask={s} onEnter={() => add.current?.focus()} actualMs={actual.get(s.id) ?? 0} timer={timer ?? null} />
         ))}
       </ul>
       <div className="flex items-center gap-2.5 px-1 py-1 text-ink-3 focus-within:text-ink">
