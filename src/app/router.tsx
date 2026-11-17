@@ -6,6 +6,7 @@ import { FocusPage } from '@/features/focus/FocusPage';
 import { HighlightsPage } from '@/features/rituals/HighlightsPage';
 import { PlanPage } from '@/features/rituals/PlanPage';
 import { ShutdownPage } from '@/features/rituals/ShutdownPage';
+import { BacklogPage } from '@/features/lists/BacklogPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -82,11 +83,7 @@ const weeklyReviewRoute = createRoute({
   path: '/weekly/review',
   component: () => <ComingSoon title="Weekly review" phase={5} summary="What got done, where the time went, and how the objectives fared." />,
 });
-const backlogRoute = createRoute({
-  getParentRoute: parent,
-  path: '/backlog',
-  component: () => <ComingSoon title="Backlog" phase={5} summary="Tasks without a day, sorted into time buckets and folders." />,
-});
+const backlogRoute = createRoute({ getParentRoute: parent, path: '/backlog', component: BacklogPage });
 const settingsRoute = createRoute({
   getParentRoute: parent,
   path: '/settings',

@@ -1,7 +1,7 @@
 import { useUi } from '@/app/uiStore';
 import { createChannel } from '@/data/commands/channels';
 import { createTask } from '@/data/commands/tasks';
-import type { DailyPriority, Id, ListEdge, Task, TaskDay } from '@/data/types';
+import type { BacklogBucket, DailyPriority, Id, ListEdge, Task, TaskDay } from '@/data/types';
 import { extractTokens } from '@/domain/tokens';
 
 interface Extras {
@@ -10,6 +10,8 @@ interface Extras {
   plannedMin?: number | null;
   priority?: DailyPriority;
   position?: ListEdge;
+  bucket?: BacklogBucket;
+  folderId?: Id | null;
 }
 
 /**
@@ -35,5 +37,7 @@ export async function createFromText(text: string, extras: Extras): Promise<Task
     plannedMin: extras.plannedMin ?? parsed.plannedMin ?? null,
     dailyPriority: extras.priority ?? parsed.priority,
     position: extras.position,
+    backlogBucket: extras.bucket,
+    backlogFolderId: extras.folderId,
   });
 }

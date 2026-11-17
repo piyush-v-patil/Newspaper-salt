@@ -1,6 +1,7 @@
 import { createChannel } from '@/data/commands/channels';
 import { useChannels, useContexts, useSettings } from '@/data/ReferenceData';
-import type { DailyPriority, Id, TaskDay } from '@/data/types';
+import type { BacklogPriority, DailyPriority, Id, TaskDay } from '@/data/types';
+import { BACKLOG_PRIORITIES } from '@/domain/backlog';
 import { today } from '@/domain/clock';
 import { PickerPanel } from './PickerPanel';
 import { channelOptions, dateOptions, priorityOptions, timeOptions, type ChannelChoice } from './options';
@@ -45,4 +46,20 @@ export function DatePicker({ onPick }: { onPick: (day: TaskDay) => void }) {
 
 export function PriorityPicker({ onPick }: { onPick: (priority: DailyPriority) => void }) {
   return <PickerPanel label="Priority" placeholder="Set priority" getOptions={priorityOptions} onSelect={onPick} />;
+}
+
+export function BacklogPriorityPicker({ onPick }: { onPick: (priority: BacklogPriority) => void }) {
+  return (
+    <PickerPanel
+      label="Priority"
+      placeholder="Set backlog priority"
+      getOptions={(query) => {
+        const q = query.trim().toLowerCase();
+        const options = BACKLOG_PRIORITIES.map((p, i) => ({ key: p.id, label: p.label, value: p.id, hint: String(i + 1) }));
+        if (/^[1-5]$/.test(q)) return [options[Number(q) - 1]];
+        return q ? options.filter((o) => o.label.toLowerCase().startsWith(q)) : options;
+      }}
+      onSelect={onPick}
+    />
+  );
 }

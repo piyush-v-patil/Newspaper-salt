@@ -2,13 +2,14 @@ import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
 import { Clock, Flag } from 'lucide-react';
-import { setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
+import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
 import { PLANNING_CARD } from '@/data/commands/days';
 import { setActualForDay } from '@/data/commands/timer';
 import { useRunningTimer } from '@/data/queries';
-import { BACKLOG, type DailyPriority, type Task } from '@/data/types';
+import { BACKLOG, type BacklogPriority, type DailyPriority, type Task } from '@/data/types';
+import { BACKLOG_PRIORITIES } from '@/domain/backlog';
 import { today } from '@/domain/clock';
 import { msToMinutes } from '@/domain/time';
 import { useChannelMap, useSettings } from '@/data/ReferenceData';
@@ -17,7 +18,7 @@ import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
 import { ChannelTag } from './ChannelTag';
 import { useTaskData } from './TaskData';
-import { ChannelPicker, DatePicker, PriorityPicker, TimePicker } from './pickers/pickers';
+import { BacklogPriorityPicker, ChannelPicker, DatePicker, PriorityPicker, TimePicker } from './pickers/pickers';
 import { PRIORITY_LABELS } from './pickers/options';
 import { useTaskFocus, type TaskActionKind } from './taskFocus';
 import { useOpenTask } from './useOpenTask';
@@ -27,6 +28,14 @@ const PRIORITY_COLOR: Record<DailyPriority, string> = {
   priority: 'text-warn',
   normal: '',
   low: 'text-ink-3',
+};
+
+const BACKLOG_PRIORITY_COLOR: Record<BacklogPriority, string> = {
+  urgent: 'text-over',
+  high: 'text-warn',
+  medium: 'text-accent',
+  low: 'text-ink-3',
+  none: '',
 };
 
 /** Actual and planned time on a card: "0:42 / 1:30". Ticks while this task's timer runs. */
@@ -72,6 +81,15 @@ export function TaskCardBody({ task }: { task: Task }) {
   const channel = task.channelId ? channels.get(task.channelId) : undefined;
   const items = subtasks.get(task.id) ?? [];
   const done = task.completedAt !== null;
+  // A task on a day shows its daily priority; in the backlog, its backlog priority.
+  const flag =
+    task.day === BACKLOG
+      ? task.backlogPriority !== 'none'
+        ? { color: BACKLOG_PRIORITY_COLOR[task.backlogPriority], label: BACKLOG_PRIORITIES.find((p) => p.id === task.backlogPriority)!.label }
+        : null
+      : task.dailyPriority !== 'normal'
+        ? { color: PRIORITY_COLOR[task.dailyPriority], label: PRIORITY_LABELS[task.dailyPriority] }
+        : null;
 
   const open = (kind: TaskActionKind) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -95,9 +113,9 @@ export function TaskCardBody({ task }: { task: Task }) {
         >
           {task.title}
         </span>
-        {task.dailyPriority !== 'normal' && (
-          <span className={`pt-0.5 ${PRIORITY_COLOR[task.dailyPriority]}`} title={PRIORITY_LABELS[task.dailyPriority]}>
-            <Flag size={13} fill="currentColor" aria-label={PRIORITY_LABELS[task.dailyPriority]} />
+        {flag && (
+          <span className={`pt-0.5 ${flag.color}`} title={flag.label}>
+            <Flag size={13} fill="currentColor" aria-label={flag.label} />
           </span>
         )}
         <CardTime task={task} onOpen={open('planned')} />
@@ -170,7 +188,11 @@ function ActionPicker({ task, kind, onDone }: { task: Task; kind: TaskActionKind
     case 'date':
       return <DatePicker onPick={(day) => then(moveTask(task.id, day))} />;
     case 'priority':
-      return <PriorityPicker onPick={(p) => then(setDailyPriority(task.id, p))} />;
+      return task.day === BACKLOG ? (
+        <BacklogPriorityPicker onPick={(p) => then(setBacklogPriority(task.id, p))} />
+      ) : (
+        <PriorityPicker onPick={(p) => then(setDailyPriority(task.id, p))} />
+      );
   }
 }
 
@@ -200,6 +222,8 @@ export function TaskCard({ task }: { task: Task }) {
           data-task-id={task.id}
           data-testid="task"
           onMouseEnter={() => setHovered(task.id)}
+          // A card that appears under a resting pointer (after a drop, say) gets no enter event, so movement counts too.
+          onMouseMove={() => useTaskFocus.getState().hoveredId !== task.id && setHovered(task.id)}
           onMouseLeave={() => useTaskFocus.getState().hoveredId === task.id && setHovered(null)}
           onClick={() => (task.kind === 'ritual' ? openRitual(task) : openTask(task.id))}
           className={`${cardClass} animate-card ${isDragging ? 'opacity-40' : ''} ${selected ? 'border-accent ring-1 ring-accent' : ''}`}

@@ -18,7 +18,8 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { scheduleTaskAt } from '@/data/commands/sessions';
 import { placeTask } from '@/data/commands/tasks';
 import { useSettings } from '@/data/ReferenceData';
-import type { Id, Task, TaskDay } from '@/data/types';
+import type { Id, Task } from '@/data/types';
+import { listTarget } from '@/domain/backlog';
 import { snap } from '@/domain/scheduling';
 import { DAY_MIN, dayOfCalendarDrop, isCalendarDrop, pxToMin } from '@/features/calendar/metrics';
 import { cardClass, TaskCard, TaskCardBody } from './TaskCard';
@@ -166,14 +167,16 @@ export function TaskDndRoot({ children }: { children: ReactNode }) {
 
     const ids = next[list];
     const index = ids.indexOf(id);
-    const unchanged = task.day === list && (lists[list] ?? []).map((t) => t.id).join() === ids.join();
+    // Same members in the same order means the drop changed nothing.
+    const unchanged = (lists[list] ?? []).map((t) => t.id).join() === ids.join();
     if (unchanged) return reset();
 
     settling.current = true;
     useDnd.setState({ activeId: null, draft: next, ghost: null });
     const before = byId.get(ids[index - 1])?.order ?? null;
     const after = byId.get(ids[index + 1])?.order ?? null;
-    void placeTask(id, list as TaskDay, before, after);
+    const target = listTarget(list);
+    void placeTask(id, target.day, before, after, target.bucket);
   }
 
   const activeTask = activeId ? byId.get(activeId) : undefined;

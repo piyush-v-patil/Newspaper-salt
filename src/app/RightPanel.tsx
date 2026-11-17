@@ -2,6 +2,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { Archive, CalendarDays, ListChecks, ListTodo, Search, Target, Trash2, type LucideIcon } from 'lucide-react';
 import { CalendarPanel } from '@/features/calendar/CalendarPanel';
 import { TasksPanel } from '@/features/calendar/TasksPanel';
+import { BacklogPanel } from '@/features/lists/BacklogPanel';
 import { ArchivePanel, SearchPanel, TrashPanel } from '@/features/lists/panels';
 import { useTasksInState } from '@/data/queries';
 import { useUi, type RightPanelKind } from './uiStore';
@@ -18,7 +19,7 @@ interface PanelDef {
 const panels: PanelDef[] = [
   { kind: 'calendar', label: 'Calendar', icon: CalendarDays, hint: 'Shift C' },
   { kind: 'objectives', label: 'Weekly objectives', icon: Target, hint: 'Shift R', body: 'This week’s objectives and the time planned for each.' },
-  { kind: 'backlog', label: 'Backlog', icon: ListTodo, hint: 'Shift B', body: 'Tasks without a day. Drag one onto a day to schedule it.' },
+  { kind: 'backlog', label: 'Backlog', icon: ListTodo, hint: 'Shift B' },
   { kind: 'archive', label: 'Archive', icon: Archive, hint: 'Shift A' },
   { kind: 'search', label: 'Search', icon: Search, hint: 'Ctrl F' },
   { kind: 'trash', label: 'Trash', icon: Trash2 },
@@ -28,6 +29,8 @@ function PanelBody({ kind, onCalendar, label, body }: { kind: RightPanelKind; on
   switch (kind) {
     case 'calendar':
       return onCalendar ? <TasksPanel /> : <CalendarPanel />;
+    case 'backlog':
+      return <BacklogPanel />;
     case 'archive':
       return <ArchivePanel />;
     case 'trash':

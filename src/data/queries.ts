@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
 import { db } from './db';
-import type { CalendarEvent, DayRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
+import type { BacklogFolder, CalendarEvent, DayRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
 
 const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.order, b.order);
 
@@ -129,4 +129,9 @@ export function useTasksById(ids: Id[]): Map<Id, Task> {
   const key = ids.join(',');
   const rows = useLiveQuery(() => db.tasks.bulkGet(ids), [key]);
   return useMemo(() => new Map((rows ?? []).flatMap((t) => (t ? [[t.id, t] as const] : []))), [rows]);
+}
+
+export function useBacklogFolders(): BacklogFolder[] {
+  const rows = useLiveQuery(() => db.backlogFolders.toArray(), []);
+  return useMemo(() => (rows ?? []).slice().sort(byOrder), [rows]);
 }

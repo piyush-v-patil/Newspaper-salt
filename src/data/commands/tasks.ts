@@ -3,7 +3,16 @@ import { compareKeys, keyAtEdge, safeKeyBetween } from '@/domain/ordering';
 import { shiftDay } from '@/domain/dates';
 import { pullForward, snap, SNAP_MIN } from '@/domain/scheduling';
 import { command, db, getSettings } from '../db';
-import { BACKLOG, type DailyPriority, type Id, type ListEdge, type Task, type TaskDay } from '../types';
+import {
+  BACKLOG,
+  type BacklogBucket,
+  type BacklogPriority,
+  type DailyPriority,
+  type Id,
+  type ListEdge,
+  type Task,
+  type TaskDay,
+} from '../types';
 import { recordUndo } from '../undo';
 import { withSnapshot } from './snapshot';
 import { getRunningTimer, stopRunningTimer } from './timer';
@@ -14,6 +23,8 @@ export interface NewTask {
   channelId?: Id | null;
   plannedMin?: number | null;
   dailyPriority?: DailyPriority;
+  backlogBucket?: BacklogBucket;
+  backlogFolderId?: Id | null;
   position?: ListEdge;
 }
 
@@ -38,8 +49,8 @@ export const createTask = command(async (input: NewTask): Promise<Task> => {
     plannedMin: input.plannedMin ?? null,
     dailyPriority: input.dailyPriority ?? 'normal',
     backlogPriority: 'none',
-    backlogBucket: 'someday',
-    backlogFolderId: null,
+    backlogBucket: input.backlogBucket ?? 'someday',
+    backlogFolderId: day === BACKLOG ? (input.backlogFolderId ?? null) : null,
     objectiveId: null,
     completedAt: null,
     completedDay: null,
@@ -143,11 +154,14 @@ async function requireTask(id: Id): Promise<Task> {
  * calendar sessions with it: sessions still ahead on other days are removed,
  * while sessions already in the past stay as a record.
  */
-async function reposition(task: Task, day: TaskDay, order: string): Promise<void> {
-  if (task.day === day) return patchTask(task.id, { order }, 'Move task');
+async function reposition(task: Task, day: TaskDay, order: string, bucket?: BacklogBucket): Promise<void> {
+  const extra = bucket ? { backlogBucket: bucket } : {};
+  if (task.day === day) return patchTask(task.id, { order, ...extra }, 'Move task');
 
   await withSnapshot('Move task', { taskIds: [task.id] }, async () => {
-    await db.tasks.update(task.id, { day, order, rolloverDays: 0, updatedAt: now() });
+    // Folders exist only in the backlog, so a task leaves its folder when it gets a day.
+    const folder = day === BACKLOG ? {} : { backlogFolderId: null };
+    await db.tasks.update(task.id, { day, order, rolloverDays: 0, ...extra, ...folder, updatedAt: now() });
     const current = today();
     const time = nowMinutes();
     const upcoming = (await db.sessions.where('taskId').equals(task.id).toArray()).filter(
@@ -168,9 +182,11 @@ async function moveToEdge(id: Id, day: TaskDay, position: ListEdge): Promise<voi
 export const moveTask = command((id: Id, day: TaskDay, position: ListEdge = 'top'): Promise<void> => moveToEdge(id, day, position));
 
 /** Drops a task between two neighbours, given their order keys (null at either end). */
-export const placeTask = command(async (id: Id, day: TaskDay, before: string | null, after: string | null): Promise<void> => {
-  return reposition(await requireTask(id), day, safeKeyBetween(before, after));
-});
+export const placeTask = command(
+  async (id: Id, day: TaskDay, before: string | null, after: string | null, bucket?: BacklogBucket): Promise<void> => {
+    return reposition(await requireTask(id), day, safeKeyBetween(before, after), bucket);
+  },
+);
 
 /** Moves a task one place up or down within its list. Does nothing at the edge. */
 export const nudgeTask = command(async (id: Id, direction: 'up' | 'down'): Promise<void> => {
@@ -220,6 +236,15 @@ export const setChannel = command((id: Id, channelId: Id | null): Promise<void> 
 
 export const setDailyPriority = command((id: Id, dailyPriority: DailyPriority): Promise<void> =>
   patchTask(id, { dailyPriority }, 'Set priority'),
+);
+
+/** Backlog priority is separate from daily priority and stays until changed. */
+export const setBacklogPriority = command((id: Id, backlogPriority: BacklogPriority): Promise<void> =>
+  patchTask(id, { backlogPriority }, 'Set priority'),
+);
+
+export const setBacklogFolder = command((id: Id, backlogFolderId: Id | null): Promise<void> =>
+  patchTask(id, { backlogFolderId }, 'Set folder'),
 );
 
 /** Notes save as you type, so they are not added to the undo stack. */

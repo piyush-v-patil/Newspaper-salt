@@ -6,6 +6,7 @@ import { BACKLOG } from '../types';
 import { clearUndo, undoLast, useUndo } from '../undo';
 import { updateSettings } from './settings';
 import { createChannel } from './channels';
+import { createFolder, deleteFolder } from './folders';
 import { addSubtask, deleteSubtask, setSubtaskCompleted } from './subtasks';
 import {
   createTask,
@@ -15,6 +16,7 @@ import {
   nudgeTask,
   placeTask,
   renameTask,
+  setBacklogPriority,
   setTaskCompleted,
   snoozeTask,
 } from './tasks';
@@ -270,5 +272,48 @@ describe('undo pressed straight after a command', () => {
     await adding;
     expect(await undoing).toBe('Add task');
     expect(await tasksForDay(DAY)).toEqual([]);
+  });
+});
+
+describe('backlog', () => {
+  it('keeps a bucket and folder while in the backlog, and drops the folder when scheduled', async () => {
+    const folder = await createFolder('Home');
+    const task = await createTask({ title: 'Fix gate', day: BACKLOG, backlogFolderId: folder.id });
+    expect((await db.tasks.get(task.id))?.backlogBucket).toBe('someday');
+
+    // Dropped into another bucket.
+    await placeTask(task.id, BACKLOG, null, null, 'month');
+    let stored = await db.tasks.get(task.id);
+    expect([stored?.backlogBucket, stored?.backlogFolderId]).toEqual(['month', folder.id]);
+
+    await moveTask(task.id, DAY);
+    stored = await db.tasks.get(task.id);
+    expect(stored?.backlogFolderId).toBeNull();
+    await undoLast();
+    expect((await db.tasks.get(task.id))?.backlogFolderId).toBe(folder.id);
+  });
+
+  it('ignores a folder for a task created on a day', async () => {
+    const folder = await createFolder('Home');
+    const task = await createTask({ title: 'Today thing', backlogFolderId: folder.id });
+    expect(task.backlogFolderId).toBeNull();
+  });
+
+  it('reuses a folder of the same name, and deleting one frees its tasks', async () => {
+    const folder = await createFolder('Home');
+    expect((await createFolder(' home ')).id).toBe(folder.id);
+    const task = await createTask({ title: 'Fix gate', day: BACKLOG, backlogFolderId: folder.id });
+    await deleteFolder(folder.id);
+    expect((await db.tasks.get(task.id))?.backlogFolderId).toBeNull();
+    await undoLast();
+    expect((await db.tasks.get(task.id))?.backlogFolderId).toBe(folder.id);
+    expect(await db.backlogFolders.count()).toBe(1);
+  });
+
+  it('has its own priority, untouched by daily priority', async () => {
+    const task = await createTask({ title: 'a', day: BACKLOG });
+    await setBacklogPriority(task.id, 'high');
+    const stored = await db.tasks.get(task.id);
+    expect([stored?.backlogPriority, stored?.dailyPriority]).toEqual(['high', 'normal']);
   });
 });

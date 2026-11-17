@@ -1,10 +1,10 @@
 import { Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import type { TaskDay } from '@/data/types';
+import type { Id, TaskDay } from '@/data/types';
 import { createFromText } from './createFromText';
 
 /** Inline add at the top of a list. Stays focused after Enter so several tasks can be typed in a row. */
-export function AddTaskRow({ day }: { day: TaskDay }) {
+export function AddTaskRow({ day, folderId, placeholder = 'Add task' }: { day: TaskDay; folderId?: Id | null; placeholder?: string }) {
   const [title, setTitle] = useState('');
 
   async function submit(e: FormEvent) {
@@ -14,7 +14,7 @@ export function AddTaskRow({ day }: { day: TaskDay }) {
     // Clear before saving, so typing the next task straight away never mixes with this one.
     setTitle('');
     try {
-      await createFromText(submitted, { day });
+      await createFromText(submitted, { day, folderId });
     } catch {
       setTitle((current) => current || submitted);
     }
@@ -30,7 +30,7 @@ export function AddTaskRow({ day }: { day: TaskDay }) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
-        placeholder="Add task"
+        placeholder={placeholder}
         aria-label={`Add task to ${day}`}
         autoComplete="off"
         className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-3"

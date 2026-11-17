@@ -42,6 +42,7 @@ test('unfinished tasks roll over at midnight while the app is open, with a count
   await openAt(page, '2026-11-17T22:00:00');
   await quickAdd(page, 'Finished today', 'Left undone');
   await page.getByRole('checkbox', { name: 'Complete Finished today' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Reopen Finished today' })).toBeChecked();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tuesday, November 17');
 
   await page.clock.fastForward('02:30:00');
@@ -102,6 +103,8 @@ test('daily planning walks from a look back to a finished plan', async ({ page }
   await openAt(page, '2026-11-17T14:00:00');
   await quickAdd(page, 'Carried task ~1h', 'Done yesterday ~30');
   await page.getByRole('checkbox', { name: 'Complete Done yesterday' }).click();
+  // Wait until the completion is saved before moving the clock on.
+  await expect(page.getByRole('checkbox', { name: 'Reopen Done yesterday' })).toBeChecked();
   await reopenAt(page, '2026-11-18T08:45:00');
 
   await page.keyboard.press('p');
