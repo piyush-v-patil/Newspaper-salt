@@ -57,3 +57,45 @@ test('a task can be made to repeat, edited across the series, and stopped', asyn
   await page.keyboard.press('Shift+ArrowRight');
   await expect(page.getByTestId('task')).toHaveCount(0);
 });
+
+test('a repeating task can go on the calendar at roughly a time, and how often it repeats can be changed', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-17T06:00:00') }); // a Tuesday
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  await addTasks(page, 'Gym ~1h');
+
+  await card(page, 'Gym').click();
+  await page.getByRole('dialog').first().getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Repeat…' }).click();
+  const repeat = page.getByRole('dialog', { name: 'Repeat this task' });
+  await repeat.getByRole('checkbox', { name: 'At roughly' }).check();
+  await repeat.getByLabel('At roughly', { exact: true }).last().fill('07:00');
+  await expect(repeat).toContainText('Every day at about 07:00');
+  await repeat.getByRole('button', { name: 'Repeat', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await expect(page.getByTestId('session')).toHaveAccessibleName('Gym, 07:00 – 08:00');
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(page.getByTestId('session')).toHaveAccessibleName('Gym, 07:00 – 08:00');
+  await page.keyboard.press('Shift+ArrowLeft');
+
+  // Now only on weekdays, at 6:30.
+  await card(page, 'Gym').getByText('Gym').click();
+  await page.getByRole('dialog').first().getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Repeating…' }).click();
+  const existing = page.getByRole('dialog', { name: 'Repeating task' });
+  await existing.getByRole('button', { name: /Change how often/ }).click();
+  await existing.getByRole('radio', { name: 'Weekdays' }).click();
+  await existing.getByLabel('At roughly', { exact: true }).last().fill('06:30');
+  await existing.getByRole('button', { name: 'Change', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await expect(page.getByTestId('session')).toHaveAccessibleName('Gym, 06:30 – 07:30');
+  // Saturday 21st has none now; Monday 23rd does.
+  await page.goto('/today?date=2026-11-21');
+  await expect(page.getByTestId('task')).toHaveCount(0);
+  await page.goto('/today?date=2026-11-23');
+  await expect(page.getByTestId('session')).toHaveAccessibleName('Gym, 06:30 – 07:30');
+});

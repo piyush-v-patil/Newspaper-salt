@@ -2,8 +2,8 @@ import { now, today } from '@/domain/clock';
 import { shiftDay, type Day } from '@/domain/dates';
 import { compareKeys, keyAtEdge } from '@/domain/ordering';
 import { occurrencesBetween } from '@/domain/recurrence';
-import { command, db } from '../db';
-import { BACKLOG, type Id, type Repeat, type Series, type Subtask, type Task } from '../types';
+import { command, db, getSettings } from '../db';
+import { BACKLOG, type Id, type Repeat, type Series, type Session, type Subtask, type Task } from '../types';
 import { recordUndo } from '../undo';
 
 /** Instances are created this many days ahead. */
@@ -45,6 +45,17 @@ async function addInstance(series: Series, day: Day): Promise<void> {
     return { id: crypto.randomUUID(), taskId: task.id, title, order, plannedMin: null, completedAt: null };
   });
   await db.subtasks.bulkAdd(subtasks);
+  await timebox(series, task);
+}
+
+/** With an "at roughly" time, an instance goes on the calendar at that time (unless it already is that day). */
+async function timebox(series: Pick<Series, 'atMin'>, task: Task): Promise<void> {
+  if (series.atMin == null || task.day === BACKLOG) return;
+  const existing = await db.sessions.where('taskId').equals(task.id).toArray();
+  if (existing.some((s) => s.day === task.day)) return;
+  const length = task.plannedMin ?? (await getSettings()).defaultSessionMin;
+  const session: Session = { id: crypto.randomUUID(), taskId: task.id, day: task.day, startMin: series.atMin, endMin: Math.min(series.atMin + length, 24 * 60) };
+  await db.sessions.add(session);
 }
 
 /**
@@ -57,7 +68,9 @@ async function extend(series: Series): Promise<void> {
   const until = series.endDay !== null && series.endDay < horizon ? series.endDay : horizon;
   const from = shiftDay(series.generatedThrough, 1);
   if (from > until) return;
-  for (const day of occurrencesBetween(series.repeat, series.startDay, from, until)) await addInstance(series, day);
+  // Days that already have an instance (in any state) are skipped, so an extension cut short, by a reload say, can safely run again.
+  const have = new Set((await db.tasks.where('seriesId').equals(series.id).toArray()).map((t) => t.seriesDay));
+  for (const day of occurrencesBetween(series.repeat, series.startDay, from, until)) if (!have.has(day)) await addInstance(series, day);
   await db.series.update(series.id, { generatedThrough: until });
 }
 
@@ -72,7 +85,7 @@ async function templateFrom(task: Task): Promise<Series['template']> {
 }
 
 /** Makes a task repeat. The task becomes the first instance; the rest are created up to a month ahead. */
-export const makeRecurring = command(async (taskId: Id, repeat: Repeat): Promise<Series> => {
+export const makeRecurring = command(async (taskId: Id, repeat: Repeat, atMin: number | null = null): Promise<Series> => {
   const task = await db.tasks.get(taskId);
   if (!task) throw new Error('That task no longer exists.');
   if (task.seriesId) throw new Error('That task already repeats.');
@@ -85,12 +98,17 @@ export const makeRecurring = command(async (taskId: Id, repeat: Repeat): Promise
     // The task itself covers the first day.
     generatedThrough: startDay,
     template: await templateFrom(task),
+    atMin,
   };
+  const sessionsBefore = (await db.sessions.where('taskId').equals(taskId).toArray()).map((s) => s.id);
   await db.series.add(series);
   await db.tasks.update(taskId, { seriesId: series.id, seriesDay: startDay, day: startDay, edited: false, updatedAt: now() });
+  await timebox(series, { ...task, day: startDay });
   await extend(series);
   recordUndo('Repeat task', async () => {
     const others = (await db.tasks.where('seriesId').equals(series.id).toArray()).filter((t) => t.id !== taskId).map((t) => t.id);
+    const added = (await db.sessions.where('taskId').anyOf([...others, taskId]).toArray()).filter((s) => !sessionsBefore.includes(s.id));
+    await db.sessions.bulkDelete(added.map((s) => s.id));
     await db.subtasks.where('taskId').anyOf(others).delete();
     await db.tasks.bulkDelete(others);
     await db.series.delete(series.id);
@@ -156,4 +174,49 @@ export const applyToSeries = command(async (taskId: Id): Promise<number> => {
     await db.tasks.bulkPut(open);
   });
   return open.length;
+});
+
+/**
+ * Changes how often a series repeats (and its "at roughly" time) from one
+ * instance on. That instance stays; unfinished instances after it are
+ * replaced by ones that follow the new rule. Earlier ones are left alone.
+ */
+export const changeRepeat = command(async (taskId: Id, repeat: Repeat, atMin: number | null): Promise<void> => {
+  const task = await db.tasks.get(taskId);
+  if (!task?.seriesId) throw new Error('That task does not repeat.');
+  const series = await db.series.get(task.seriesId);
+  if (!series) throw new Error('That series no longer exists.');
+  const anchor = task.day === BACKLOG ? today() : task.day;
+  const later = (await db.tasks.where('seriesId').equals(series.id).toArray()).filter(
+    (t) => t.state === 'active' && t.completedAt === null && t.id !== taskId && t.day !== BACKLOG && t.day > anchor,
+  );
+  const laterIds = later.map((t) => t.id);
+  const laterSubtasks = await db.subtasks.where('taskId').anyOf(laterIds).toArray();
+  const laterSessions = await db.sessions.where('taskId').anyOf(laterIds).toArray();
+  const anchorSessions = await db.sessions.where('taskId').equals(taskId).toArray();
+  const before = new Set((await db.tasks.where('seriesId').equals(series.id).primaryKeys()) as Id[]);
+
+  await db.sessions.bulkDelete(laterSessions.map((s) => s.id));
+  await db.subtasks.bulkDelete(laterSubtasks.map((s) => s.id));
+  await db.tasks.bulkDelete(laterIds);
+  const next: Series = { ...series, repeat, atMin, startDay: anchor, generatedThrough: anchor, endDay: null };
+  await db.series.put(next);
+  // A newly chosen time also moves this instance's timebox, if it has one that day from the old time.
+  if (atMin != null) {
+    const old = anchorSessions.find((s) => s.day === anchor && series.atMin != null && s.startMin === series.atMin);
+    if (old) await db.sessions.update(old.id, { startMin: atMin, endMin: Math.min(atMin + (old.endMin - old.startMin), 24 * 60) });
+    else await timebox(next, task);
+  }
+  await extend(next);
+
+  recordUndo('Change repeat', async () => {
+    const createdIds = ((await db.tasks.where('seriesId').equals(series.id).primaryKeys()) as Id[]).filter((id) => !before.has(id));
+    await db.sessions.where('taskId').anyOf([...createdIds, taskId]).delete();
+    await db.subtasks.where('taskId').anyOf(createdIds).delete();
+    await db.tasks.bulkDelete(createdIds);
+    await db.tasks.bulkPut(later);
+    await db.subtasks.bulkPut(laterSubtasks);
+    await db.sessions.bulkPut([...laterSessions, ...anchorSessions]);
+    await db.series.put(series);
+  });
 });

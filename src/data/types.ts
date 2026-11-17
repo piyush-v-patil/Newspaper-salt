@@ -115,6 +115,8 @@ export interface Series {
   /** Instances exist for every occurrence up to and including this day. */
   generatedThrough: Day;
   template: Pick<Task, 'title' | 'notes' | 'channelId' | 'plannedMin'> & { subtasks: string[] };
+  /** "At roughly": each instance is timeboxed at this minute of the day. */
+  atMin?: number | null;
 }
 
 export interface Context {

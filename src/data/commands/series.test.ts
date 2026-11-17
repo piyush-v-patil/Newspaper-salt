@@ -5,7 +5,7 @@ import { tasksForDay } from '../queries';
 import type { Repeat } from '../types';
 import { clearUndo, undoLast } from '../undo';
 import { runRollover } from './rollover';
-import { applyToSeries, deleteIncompleteInstances, makeRecurring, stopRepeating } from './series';
+import { applyToSeries, changeRepeat, deleteIncompleteInstances, makeRecurring, stopRepeating } from './series';
 import { addSubtask } from './subtasks';
 import { createTask, deleteTask, renameTask, setPlannedTime, setTaskCompleted } from './tasks';
 
@@ -140,5 +140,45 @@ describe('changing a series', () => {
     expect((await db.series.get(series.id))?.template.title).toBe('Daily notes');
     await undoLast();
     expect((await tasksForDay(day(25)))[0].title).toBe('Stand-up notes');
+  });
+});
+
+describe('at roughly a time', () => {
+  it('timeboxes every instance at that time, for its planned length', async () => {
+    const task = await createTask({ title: 'Gym', plannedMin: 60 });
+    const series = await makeRecurring(task.id, DAILY, 7 * 60);
+    const sessions = await db.sessions.toArray();
+    expect(sessions).toHaveLength(31);
+    const first = sessions.find((s) => s.taskId === task.id)!;
+    expect([first.day, first.startMin, first.endMin]).toEqual([day(17), 420, 480]);
+    // Undo takes the timeboxes away too.
+    await undoLast();
+    expect(await db.sessions.count()).toBe(0);
+    expect(await db.series.get(series.id)).toBeUndefined();
+  });
+});
+
+describe('changeRepeat', () => {
+  it('replaces later unfinished instances to follow the new rule, from this one on', async () => {
+    const task = await createTask({ title: 'Review' });
+    const series = await makeRecurring(task.id, DAILY);
+    // Finish tomorrow's early; it stays as a record.
+    const tomorrow = (await tasksForDay(day(18)))[0];
+    await setTaskCompleted(tomorrow.id, true);
+
+    const weekly: Repeat = { kind: 'weekly', interval: 1, weekdays: [5] }; // Fridays
+    await changeRepeat(task.id, weekly, 8 * 60);
+    const days = (await instances(series.id)).map((t) => t.day).sort();
+    expect(days.slice(0, 4)).toEqual([day(17), day(18), day(20), day(27)]);
+    expect((await db.series.get(series.id))?.repeat).toEqual(weekly);
+    // Fridays are timeboxed at 8:00, and so is this one.
+    const friday = (await tasksForDay(day(20)))[0];
+    expect((await db.sessions.where('taskId').equals(friday.id).first())?.startMin).toBe(480);
+    expect((await db.sessions.where('taskId').equals(task.id).first())?.startMin).toBe(480);
+
+    await undoLast();
+    expect(await instances(series.id)).toHaveLength(31);
+    expect((await db.series.get(series.id))?.repeat).toEqual(DAILY);
+    expect(await db.sessions.count()).toBe(0);
   });
 });

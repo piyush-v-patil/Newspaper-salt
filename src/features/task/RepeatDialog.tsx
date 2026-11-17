@@ -1,11 +1,12 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { applyToSeries, deleteIncompleteInstances, makeRecurring, stopRepeating } from '@/data/commands/series';
+import { applyToSeries, changeRepeat, deleteIncompleteInstances, makeRecurring, stopRepeating } from '@/data/commands/series';
+import { useSettings } from '@/data/ReferenceData';
 import { db } from '@/data/db';
 import { BACKLOG, type Repeat, type RepeatKind, type Task } from '@/data/types';
 import { today } from '@/domain/clock';
-import { weekdayOf } from '@/domain/dates';
+import { formatClock, weekdayOf } from '@/domain/dates';
 import { describeRepeat } from '@/domain/recurrence';
 
 const KINDS: { id: RepeatKind; label: string; unit: string | null }[] = [
@@ -21,11 +22,32 @@ const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const action = 'flex flex-col rounded-lg border border-line px-3 py-2.5 text-left hover:border-line-strong hover:bg-hover';
 
-function NewSeries({ task, onDone }: { task: Task; onDone: () => void }) {
+/** "Every day at about 7:00 AM". */
+function useDescribe() {
+  const { timeFormat } = useSettings();
+  return (repeat: Repeat, atMin: number | null | undefined) =>
+    `${describeRepeat(repeat)}${atMin != null ? ` at about ${formatClock(atMin, timeFormat)}` : ''}`;
+}
+
+const toClock = (min: number) => formatClock(min, '24h');
+
+interface FormProps {
+  task: Task;
+  initial?: { repeat: Repeat; atMin: number | null };
+  submitLabel: string;
+  note: string;
+  onSubmit: (repeat: Repeat, atMin: number | null) => void;
+  onCancel?: () => void;
+}
+
+/** How often, and optionally at roughly what time. Used to start a series and to change one. */
+function RepeatForm({ task, initial, submitLabel, note, onSubmit, onCancel }: FormProps) {
   const startWeekday = weekdayOf(task.day === BACKLOG ? today() : task.day);
-  const [kind, setKind] = useState<RepeatKind>('daily');
-  const [interval, setInterval] = useState(1);
-  const [weekdays, setWeekdays] = useState<number[]>([startWeekday]);
+  const describe = useDescribe();
+  const [kind, setKind] = useState<RepeatKind>(initial?.repeat.kind ?? 'daily');
+  const [interval, setInterval] = useState(initial?.repeat.interval ?? 1);
+  const [weekdays, setWeekdays] = useState<number[]>(initial?.repeat.weekdays.length ? initial.repeat.weekdays : [startWeekday]);
+  const [atMin, setAtMin] = useState<number | null>(initial?.atMin ?? null);
   const repeat: Repeat = { kind, interval, weekdays };
   const unit = KINDS.find((k) => k.id === kind)?.unit;
   const valid = kind !== 'weekly' || weekdays.length > 0;
@@ -82,34 +104,91 @@ function NewSeries({ task, onDone }: { task: Task; onDone: () => void }) {
         </div>
       )}
 
-      <p className="text-[12.5px] text-ink-3">
-        {valid ? `${describeRepeat(repeat)}, starting with this task. Its subtasks, notes, channel and planned time are copied to each one.` : 'Pick at least one day.'}
-      </p>
+      <div className="flex items-center gap-2 text-[13.5px]">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={atMin !== null}
+            onChange={(e) => setAtMin(e.target.checked ? 9 * 60 : null)}
+            className="h-4 w-4 accent-[var(--accent)]"
+          />
+          At roughly
+        </label>
+        {atMin !== null && (
+          <input
+            type="time"
+            aria-label="At roughly"
+            value={toClock(atMin)}
+            onChange={(e) => {
+              const [h, m] = e.target.value.split(':').map(Number);
+              if (Number.isFinite(h) && Number.isFinite(m)) setAtMin(h * 60 + m);
+            }}
+            className="h-8 rounded-md border border-line bg-surface px-2 text-[13px]"
+          />
+        )}
+        {atMin === null && <span className="text-[12.5px] text-ink-3">to put each one on the calendar</span>}
+      </div>
+
+      <p className="text-[12.5px] text-ink-3">{valid ? `${describe(repeat, atMin)}, ${note}` : 'Pick at least one day.'}</p>
       <div className="flex justify-end gap-2">
-        <Dialog.Close asChild>
-          <button type="button" className="h-8 rounded-md px-3 text-[13px] text-ink-2 hover:bg-hover">
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="h-8 rounded-md px-3 text-[13px] text-ink-2 hover:bg-hover">
             Cancel
           </button>
-        </Dialog.Close>
+        ) : (
+          <Dialog.Close asChild>
+            <button type="button" className="h-8 rounded-md px-3 text-[13px] text-ink-2 hover:bg-hover">
+              Cancel
+            </button>
+          </Dialog.Close>
+        )}
         <button
           type="button"
           disabled={!valid}
-          onClick={() => {
-            void makeRecurring(task.id, repeat);
-            onDone();
-          }}
+          onClick={() => onSubmit(repeat, atMin)}
           className="h-8 rounded-md bg-ink px-3.5 text-[13px] font-medium text-canvas disabled:opacity-35"
         >
-          Repeat
+          {submitLabel}
         </button>
       </div>
     </div>
   );
 }
 
+function NewSeries({ task, onDone }: { task: Task; onDone: () => void }) {
+  return (
+    <RepeatForm
+      task={task}
+      submitLabel="Repeat"
+      note="starting with this task. Its subtasks, notes, channel and planned time are copied to each one."
+      onSubmit={(repeat, atMin) => {
+        void makeRecurring(task.id, repeat, atMin);
+        onDone();
+      }}
+    />
+  );
+}
+
 function ExistingSeries({ task, onDone }: { task: Task; onDone: () => void }) {
   const series = useLiveQuery(() => (task.seriesId ? db.series.get(task.seriesId) : undefined), [task.seriesId]);
+  const describe = useDescribe();
+  const [changing, setChanging] = useState(false);
   if (!series) return null;
+  if (changing) {
+    return (
+      <RepeatForm
+        task={task}
+        initial={{ repeat: series.repeat, atMin: series.atMin ?? null }}
+        submitLabel="Change"
+        note="from this one on. Later unfinished instances are replaced to match."
+        onCancel={() => setChanging(false)}
+        onSubmit={(repeat, atMin) => {
+          void changeRepeat(task.id, repeat, atMin);
+          onDone();
+        }}
+      />
+    );
+  }
   const run = (work: Promise<unknown>) => {
     void work;
     onDone();
@@ -117,9 +196,13 @@ function ExistingSeries({ task, onDone }: { task: Task; onDone: () => void }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="pb-1 text-[13.5px] text-ink-2">
-        {describeRepeat(series.repeat)}
+        {describe(series.repeat, series.atMin)}
         {series.endDay !== null && ' (stopped)'}
       </p>
+      <button type="button" className={action} onClick={() => setChanging(true)}>
+        <span className="text-[14px] font-medium">Change how often…</span>
+        <span className="text-[12.5px] text-ink-3">The days it repeats on, and the time it goes on the calendar.</span>
+      </button>
       <button type="button" className={action} onClick={() => run(applyToSeries(task.id))}>
         <span className="text-[14px] font-medium">Update all incomplete instances to match this task</span>
         <span className="text-[12.5px] text-ink-3">Copies its title, notes, channel and planned time.</span>
