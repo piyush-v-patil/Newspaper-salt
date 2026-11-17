@@ -2,7 +2,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { useToday } from '@/app/useToday';
 import { X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createEvent, deleteEvent, updateEvent } from '@/data/commands/events';
+import { convertEventToTask, createEvent, deleteEvent, updateEvent } from '@/data/commands/events';
 import { changeSession, removeSession, workingWindow } from '@/data/commands/sessions';
 import { setTaskCompleted } from '@/data/commands/tasks';
 import { useSchedule } from '@/data/queries';
@@ -67,8 +67,18 @@ function EventEditor({ block, timeLabel, onClose }: { block: Extract<Block, { ki
         }}
         className="rounded-md border border-line bg-transparent px-2 py-1.5 text-[13.5px] outline-none focus:border-accent"
       />
+      <span className="tabular text-[12px] text-ink-3">{timeLabel}</span>
       <div className="flex items-center justify-between text-[12px]">
-        <span className="tabular text-ink-3">{timeLabel}</span>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            void convertEventToTask(block.id);
+          }}
+          className="rounded px-1.5 py-0.5 text-accent hover:bg-accent-soft"
+        >
+          Turn into task
+        </button>
         <button
           type="button"
           onClick={() => {

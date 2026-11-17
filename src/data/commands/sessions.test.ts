@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetClock, setClock } from '@/domain/clock';
 import { db } from '../db';
 import { clearUndo, undoLast } from '../undo';
-import { createEvent } from './events';
+import { convertEventToTask, createEvent } from './events';
 import {
   autoScheduleTask,
   changeSession,
@@ -255,5 +255,21 @@ describe('estimate and calendar stay in step', () => {
     await clearSessions(task.id, DAY);
     expect(await sessionsOf(task.id)).toEqual([]);
     expect(await planned(task.id)).toBe(60);
+  });
+});
+
+describe('turning an event into a task', () => {
+  it('keeps the title, takes the length as the estimate, timeboxes the same slot, and undoes', async () => {
+    const event = await createEvent({ title: 'Prep slides', day: DAY, startMin: h(14), endMin: h(15, 30) });
+    const task = await convertEventToTask(event.id);
+    expect(task?.title).toBe('Prep slides');
+    expect(await planned(task!.id)).toBe(90);
+    expect(await sessionsOf(task!.id)).toEqual([[DAY, h(14), h(15, 30)]]);
+    expect(await db.events.count()).toBe(0);
+
+    await undoLast();
+    expect(await db.tasks.get(task!.id)).toBeUndefined();
+    expect(await db.sessions.count()).toBe(0);
+    expect((await db.events.get(event.id))?.title).toBe('Prep slides');
   });
 });

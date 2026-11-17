@@ -1,6 +1,7 @@
 import type { Day } from '@/domain/dates';
 import { command, db } from '../db';
-import type { CalendarEvent, Id } from '../types';
+import type { CalendarEvent, Id, Session, Task } from '../types';
+import { buildTask } from './tasks';
 import { recordUndo } from '../undo';
 
 export const createEvent = command(async (input: { title: string; day: Day; startMin: number; endMin: number }): Promise<CalendarEvent> => {
@@ -26,4 +27,34 @@ export const deleteEvent = command(async (id: Id): Promise<void> => {
   if (!before) return;
   await db.events.delete(id);
   recordUndo('Event deleted', async () => db.events.put(before).then(() => undefined), true);
+});
+
+/**
+ * Turns an event into a task: same title, planned for the event's length,
+ * and timeboxed in the event's slot. One undo puts the event back.
+ */
+export const convertEventToTask = command(async (id: Id): Promise<Task | null> => {
+  const event = await db.events.get(id);
+  if (!event) return null;
+  const task = await buildTask({
+    title: event.title,
+    day: event.day,
+    channelId: event.channelId,
+    plannedMin: event.endMin - event.startMin,
+    position: 'bottom',
+  });
+  const session: Session = { id: crypto.randomUUID(), taskId: task.id, day: event.day, startMin: event.startMin, endMin: event.endMin };
+  await db.tasks.add(task);
+  await db.sessions.add(session);
+  await db.events.delete(id);
+  recordUndo(
+    'Turned into a task',
+    async () => {
+      await db.sessions.delete(session.id);
+      await db.tasks.delete(task.id);
+      await db.events.put(event);
+    },
+    true,
+  );
+  return task;
 });

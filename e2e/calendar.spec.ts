@@ -186,3 +186,21 @@ test('the calendar view shows the week with the day’s tasks beside it', async 
   await page.getByRole('button', { name: 'Day', exact: true }).click();
   await expect(page.locator('[data-cal-day]')).toHaveCount(1);
 });
+
+test('an event can be turned into a timeboxed task', async ({ page }) => {
+  await openAt(page, '08:00');
+  await dragMouse(page, await pointAt(page, 14, 2), await pointAt(page, 15, 30));
+  await page.getByLabel('Event title').fill('Prep slides');
+  await page.getByLabel('Event title').press('Enter');
+  await expect(page.getByTestId('event')).toHaveAccessibleName('Prep slides, 14:00 – 15:30');
+
+  await page.getByTestId('event').click();
+  await page.getByRole('button', { name: 'Turn into task' }).click();
+  await expect(page.getByTestId('event')).toHaveCount(0);
+  await expect(page.getByTestId('session')).toHaveAccessibleName('Prep slides, 14:00 – 15:30');
+  await expect(card(page, 'Prep slides')).toContainText('1:30');
+
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByTestId('event')).toHaveCount(1);
+  await expect(page.getByTestId('task')).toHaveCount(0);
+});

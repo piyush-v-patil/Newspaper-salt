@@ -34,7 +34,8 @@ async function orderKeysFor(day: TaskDay): Promise<string[]> {
   return rows.map((t) => t.order).sort(compareKeys);
 }
 
-export const createTask = command(async (input: NewTask): Promise<Task> => {
+/** A new task row, not yet saved. Shared by every command that creates tasks. */
+export async function buildTask(input: NewTask): Promise<Task> {
   const title = input.title.trim();
   if (!title) throw new Error('A task needs a title.');
   const settings = await getSettings();
@@ -66,6 +67,11 @@ export const createTask = command(async (input: NewTask): Promise<Task> => {
     createdAt: stamp,
     updatedAt: stamp,
   };
+  return task;
+}
+
+export const createTask = command(async (input: NewTask): Promise<Task> => {
+  const task = await buildTask(input);
   await db.tasks.add(task);
   recordUndo('Add task', async () => {
     await db.tasks.delete(task.id);
