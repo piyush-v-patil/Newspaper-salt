@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { useSearch } from '@tanstack/react-router';
-import { Copy, Ellipsis, Repeat, Trash2, X } from 'lucide-react';
+import { Copy, Ellipsis, Merge, Repeat, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   deleteTask,
@@ -19,6 +19,7 @@ import type { Task } from '@/data/types';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { ActualChip } from './ActualChip';
 import { NotesEditor } from './NotesEditor';
+import { MergeDialog } from './MergeDialog';
 import { RepeatDialog } from './RepeatDialog';
 import { Subtasks } from './Subtasks';
 import { TaskChips } from './TaskChips';
@@ -65,14 +66,16 @@ export function TitleField({ task, large = false }: { task: Task; large?: boolea
 const menuItem =
   'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13.5px] text-ink-2 outline-none data-[highlighted]:bg-hover data-[highlighted]:text-ink';
 
-function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
+function TaskPageBody({ task, onClose, onOpen }: { task: Task; onClose: () => void; onOpen: (id: string) => void }) {
   const subtasks = useSubtasks([task.id]).get(task.id) ?? [];
   const done = task.completedAt !== null;
   const [repeatOpen, setRepeatOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
 
   return (
     <>
       <RepeatDialog task={task} open={repeatOpen} onOpenChange={setRepeatOpen} />
+      <MergeDialog task={task} open={mergeOpen} onOpenChange={setMergeOpen} onMerged={onOpen} />
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <TaskChips
@@ -102,6 +105,9 @@ function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
                 </Menu.Item>
                 <Menu.Item className={menuItem} onSelect={() => void duplicateTask(task.id)}>
                   <Copy size={14} /> Duplicate
+                </Menu.Item>
+                <Menu.Item className={menuItem} onSelect={() => setMergeOpen(true)}>
+                  <Merge size={14} /> Merge into…
                 </Menu.Item>
                 <Menu.Item
                   className={`${menuItem} data-[highlighted]:!text-over`}
@@ -163,7 +169,7 @@ export function TaskPage() {
           className="fixed left-1/2 top-[9%] z-50 flex max-h-[82vh] w-[min(680px,calc(100vw-32px))] -translate-x-1/2 flex-col rounded-xl border border-line bg-surface shadow-pop outline-none data-[state=open]:animate-pop"
         >
           <Dialog.Title className="sr-only">{showing?.title ?? 'Task'}</Dialog.Title>
-          {showing && <TaskPageBody task={showing} onClose={close} />}
+          {showing && <TaskPageBody task={showing} onClose={close} onOpen={(id) => openTask(id)} />}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

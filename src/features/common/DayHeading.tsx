@@ -1,4 +1,6 @@
 import { format } from 'date-fns';
+import { ArrowDownWideNarrow } from 'lucide-react';
+import { sortDay } from '@/data/commands/tasks';
 import { fromDay, type Day } from '@/domain/dates';
 
 /** "Tuesday" over "November 17", as at the top of each day's list. */
@@ -17,5 +19,20 @@ export function DayHeading({ day, isToday, level = 1, onClick }: { day: Day; isT
     </button>
   ) : (
     body
+  );
+}
+
+/** Puts the day's list in order: timeboxed tasks by time, then by priority, finished ones last. */
+export function SortButton({ day }: { day: Day }) {
+  return (
+    <button
+      type="button"
+      aria-label="Sort tasks"
+      title="Sort: timeboxed by time, then by priority"
+      onClick={() => void sortDay(day)}
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+    >
+      <ArrowDownWideNarrow size={15} />
+    </button>
   );
 }

@@ -2,6 +2,7 @@ import { now, nowMinutes, today } from '@/domain/clock';
 import { compareKeys, keyAtEdge, safeKeyBetween } from '@/domain/ordering';
 import { shiftDay, type Day } from '@/domain/dates';
 import { pullForward, snap, SNAP_MIN } from '@/domain/scheduling';
+import { autoSortOrder } from '@/domain/autoSort';
 import { command, db, getSettings } from '../db';
 import {
   BACKLOG,
@@ -10,6 +11,7 @@ import {
   type DailyPriority,
   type Id,
   type ListEdge,
+  type Subtask,
   type Task,
   type TaskDay,
 } from '../types';
@@ -317,4 +319,69 @@ export const duplicateTask = command(async (id: Id): Promise<Task> => {
     });
   });
   return copy;
+});
+
+/** Sorts a day's list: timeboxed tasks by time, then by priority, finished ones last. One undo restores the old order. */
+export const sortDay = command(async (day: Day): Promise<void> => {
+  const list = (await db.tasks.where('[state+day]').equals(['active', day]).toArray()).sort((a, b) => compareKeys(a.order, b.order));
+  const sessions = await db.sessions.where('day').equals(day).toArray();
+  const sorted = autoSortOrder(list, sessions, day);
+  if (sorted.every((t, i) => t.id === list[i].id)) return;
+  await withSnapshot('Sort tasks', { taskIds: list.map((t) => t.id) }, async () => {
+    let previous: string | null = null;
+    for (const task of sorted) {
+      const order = keyAtEdge(previous ? [previous] : [], 'bottom');
+      await db.tasks.update(task.id, { order, updatedAt: now() });
+      previous = order;
+    }
+  });
+});
+
+/**
+ * Merges one task into another. The merged task's title becomes a subtask
+ * of the other (done if it was done), followed by its own subtasks; its
+ * notes are appended; its tracked time and timeboxes move across; planned
+ * times add up. The merged task goes to the trash. One undo reverses it all.
+ */
+export const mergeTasks = command(async (sourceId: Id, targetId: Id): Promise<void> => {
+  if (sourceId === targetId) return;
+  const source = await requireTask(sourceId);
+  const target = await requireTask(targetId);
+  const sourceSubtasks = (await db.subtasks.where('taskId').equals(sourceId).toArray()).sort((a, b) => compareKeys(a.order, b.order));
+  const targetKeys = (await db.subtasks.where('taskId').equals(targetId).toArray()).map((s) => s.order).sort(compareKeys);
+  const entries = await db.timeEntries.where('taskId').equals(sourceId).toArray();
+  const sessions = await db.sessions.where('taskId').equals(sourceId).toArray();
+  const running = await getRunningTimer();
+
+  let last = targetKeys[targetKeys.length - 1] ?? null;
+  const next = () => (last = safeKeyBetween(last, null));
+  const heading: Subtask = { id: crypto.randomUUID(), taskId: targetId, title: source.title, order: next(), plannedMin: source.plannedMin, completedAt: source.completedAt };
+  const moved = sourceSubtasks.map((s) => ({ ...s, taskId: targetId, order: next() }));
+  const plannedMin = target.plannedMin === null && source.plannedMin === null ? null : (target.plannedMin ?? 0) + (source.plannedMin ?? 0);
+  const stamp = now();
+
+  await db.transaction('rw', [db.tasks, db.subtasks, db.timeEntries, db.sessions, db.meta], async () => {
+    await db.subtasks.bulkPut([heading, ...moved]);
+    await db.timeEntries.bulkPut(entries.map((e) => ({ ...e, taskId: targetId })));
+    await db.sessions.bulkPut(sessions.map((s) => ({ ...s, taskId: targetId })));
+    if (running?.taskId === sourceId) await db.meta.put({ key: 'timer', value: { ...running, taskId: targetId } });
+    await db.tasks.update(targetId, { plannedMin, notes: [target.notes, source.notes].filter((n) => n.trim()).join(''), edited: true, updatedAt: stamp });
+    await db.tasks.update(sourceId, { state: 'deleted', stateChangedAt: stamp, updatedAt: stamp });
+  });
+
+  recordUndo(
+    'Tasks merged',
+    async () => {
+      await db.transaction('rw', [db.tasks, db.subtasks, db.timeEntries, db.sessions, db.meta], async () => {
+        await db.subtasks.delete(heading.id);
+        await db.subtasks.bulkPut(sourceSubtasks);
+        await db.timeEntries.bulkPut(entries);
+        await db.sessions.bulkPut(sessions);
+        const timer = await getRunningTimer();
+        if (timer && running?.taskId === sourceId && timer.entryId === running.entryId) await db.meta.put({ key: 'timer', value: running });
+        await db.tasks.bulkPut([source, target]);
+      });
+    },
+    true,
+  );
 });

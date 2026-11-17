@@ -24,6 +24,7 @@ test('a channel can have its own hours for auto-scheduling', async ({ page }) =>
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Hours of #personal' })).toContainText('18:00 – 21:00');
   // Saved, not just shown.
+  await expect(page.getByRole('button', { name: 'Hours of #personal' })).toHaveAttribute('aria-busy', 'false');
   await page.reload();
   await expect(page.getByRole('button', { name: 'Hours of #personal' })).toContainText('18:00 – 21:00');
 

@@ -8,16 +8,18 @@ interface Props<T> {
   getOptions: (query: string) => Option<T>[];
   onSelect: (value: T) => void;
   emptyText?: string;
+  /** Fills its container instead of the usual popover width. */
+  wide?: boolean;
 }
 
 /** A search field over a list of options. Every task picker is one of these. */
-export function PickerPanel<T>({ label, placeholder, getOptions, onSelect, emptyText }: Props<T>) {
+export function PickerPanel<T>({ label, placeholder, getOptions, onSelect, emptyText, wide = false }: Props<T>) {
   const [query, setQuery] = useState('');
   const options = getOptions(query);
   const nav = useOptionNav(options, onSelect);
 
   return (
-    <div className="w-[232px]">
+    <div className={wide ? 'w-full pb-1' : 'w-[232px]'}>
       <input
         autoFocus
         value={query}

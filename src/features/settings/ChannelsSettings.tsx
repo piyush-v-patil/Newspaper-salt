@@ -56,6 +56,7 @@ function HoursPicker({ channel }: { channel: Channel }) {
         <button
           type="button"
           aria-label={`Hours of #${channel.name}`}
+          aria-busy={pending !== null}
           className={`flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] ${hours ? 'bg-accent-soft text-accent' : 'text-ink-3 hover:bg-hover'}`}
         >
           <Clock size={12} />

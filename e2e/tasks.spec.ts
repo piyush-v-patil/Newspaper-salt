@@ -260,3 +260,31 @@ test('$ links an objective, > adds a subtask to another task, < files it in a ba
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Ideas' }).click();
   await expect(card(page, 'Trip to Japan')).toBeVisible();
 });
+
+test('a task can be merged into another, and a day sorted by time then priority', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-17T08:00:00') });
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  await addTasks(page, 'Write copy ~30', 'Launch page ~1h');
+  await card(page, 'Write copy').click();
+  await page.getByRole('dialog').first().getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Merge into…' }).click();
+  await page.getByLabel('Merge into', { exact: true }).fill('launch');
+  await page.keyboard.press('Enter');
+  // The task page now shows the merged task.
+  await expect(page.getByRole('dialog').getByLabel('Task title')).toHaveValue('Launch page');
+  await expect(page.getByRole('dialog').getByLabel('Subtask', { exact: true })).toHaveValue('Write copy');
+  await page.keyboard.press('Escape');
+  await expect(tasks(page)).toHaveText([/Launch page/]);
+  await expect(card(page, 'Launch page')).toContainText('1:30');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(tasks(page)).toHaveCount(2);
+
+  // Sort: the timeboxed one first, then by priority.
+  await addTasks(page, 'Reply to Sam !urgent');
+  await card(page, 'Write copy').hover();
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('session')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Sort tasks' }).click();
+  await expect(tasks(page)).toHaveText([/Write copy/, /Reply to Sam/, /Launch page/]);
+});

@@ -9,7 +9,7 @@ import type { Task } from '@/data/types';
 import { shiftDay, type Day } from '@/domain/dates';
 import { monthLabel, shortDate, weekdayName } from '@/domain/dayLabels';
 import { matchesFilter } from '@/domain/filter';
-import { DayHeading } from '@/features/common/DayHeading';
+import { DayHeading, SortButton } from '@/features/common/DayHeading';
 import { ViewHeader } from '@/features/common/ViewHeader';
 import { useDayKeys } from '@/features/common/useDayKeys';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
@@ -28,7 +28,10 @@ function DayColumn({ day, tasks, worked, isToday, onFocus }: { day: Day; tasks: 
   return (
     <section aria-label={`${weekdayName(day)} ${shortDate(day)}`} data-day={day} className="flex h-full shrink-0 flex-col" style={{ width: STRIDE, paddingLeft: GAP }}>
       <div className="flex flex-col gap-3 px-1 pb-3">
-        <DayHeading day={day} isToday={isToday} level={2} onClick={onFocus} />
+        <div className="flex items-start justify-between gap-2">
+          <DayHeading day={day} isToday={isToday} level={2} onClick={onFocus} />
+          <SortButton day={day} />
+        </div>
         <WorkloadCounter day={day} tasks={tasks} />
       </div>
       <AddTaskRow day={day} tasks={tasks} />

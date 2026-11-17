@@ -317,3 +317,47 @@ describe('backlog', () => {
     expect([stored?.backlogPriority, stored?.dailyPriority]).toEqual(['high', 'normal']);
   });
 });
+
+describe('merge and sort', () => {
+  it('merges one task into another, carrying its subtasks, time and timeboxes, and undoes', async () => {
+    const { mergeTasks } = await import('./tasks');
+    const { startTimer, stopTimer } = await import('./timer');
+    const { scheduleTaskAt } = await import('./sessions');
+    const target = await createTask({ title: 'Launch page', plannedMin: 60 });
+    await addSubtask(target.id, 'Hero image');
+    const source = await createTask({ title: 'Write copy', plannedMin: 30 });
+    await addSubtask(source.id, 'Headline');
+    await startTimer(source.id);
+    await stopTimer();
+    await scheduleTaskAt(source.id, source.day as string, 14 * 60);
+
+    await mergeTasks(source.id, target.id);
+    const subtasks = (await db.subtasks.where('taskId').equals(target.id).toArray()).sort((a, b) => (a.order < b.order ? -1 : 1));
+    expect(subtasks.map((s) => s.title)).toEqual(['Hero image', 'Write copy', 'Headline']);
+    expect((await db.tasks.get(target.id))?.plannedMin).toBe(90);
+    expect((await db.tasks.get(source.id))?.state).toBe('deleted');
+    expect((await db.timeEntries.toArray()).every((e) => e.taskId === target.id)).toBe(true);
+    expect((await db.sessions.toArray()).map((s) => s.taskId)).toEqual([target.id]);
+
+    await undoLast();
+    expect((await db.tasks.get(source.id))?.state).toBe('active');
+    expect((await db.subtasks.where('taskId').equals(target.id).toArray()).map((s) => s.title)).toEqual(['Hero image']);
+    expect((await db.sessions.toArray()).map((s) => s.taskId)).toEqual([source.id]);
+  });
+
+  it('sorts a day by time, then priority, and undoes', async () => {
+    const { sortDay, setDailyPriority } = await import('./tasks');
+    const { scheduleTaskAt } = await import('./sessions');
+    const day = (await createTask({ title: 'x' })).day as string;
+    const later = await createTask({ title: 'Later', position: 'bottom' });
+    const urgent = await createTask({ title: 'Urgent', position: 'bottom' });
+    await setDailyPriority(urgent.id, 'urgent');
+    await scheduleTaskAt(later.id, day, 10 * 60);
+    const titles = async () => (await tasksForDay(day)).map((t) => t.title);
+    expect(await titles()).toEqual(['x', 'Later', 'Urgent']);
+    await sortDay(day);
+    expect(await titles()).toEqual(['Later', 'Urgent', 'x']);
+    await undoLast();
+    expect(await titles()).toEqual(['x', 'Later', 'Urgent']);
+  });
+});
