@@ -10,6 +10,7 @@ import { ViewHeader } from '@/features/common/ViewHeader';
 import { useDayKeys } from '@/features/common/useDayKeys';
 import { MonthGrid } from './MonthGrid';
 import { TimeGrid } from './TimeGrid';
+import { TrackedToggle } from './CalendarPanel';
 
 const SPANS: { value: CalendarSpan; label: string; days: number }[] = [
   { value: 'day', label: 'Day', days: 1 },
@@ -54,6 +55,7 @@ export function CalendarPage({ date }: { date?: Day }) {
         onToday={() => go(current)}
         stepLabel={span === 'month' ? 'month' : span === 'week' ? 'week' : 'day'}
       >
+        {span !== 'month' && <TrackedToggle />}
         <div role="group" aria-label="Calendar range" className="flex h-7 items-center rounded-md border border-line p-0.5">
           {SPANS.map((s) => (
             <button

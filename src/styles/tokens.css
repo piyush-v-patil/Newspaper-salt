@@ -182,6 +182,16 @@ body {
   background-color: color-mix(in srgb, var(--tag) 16%, var(--surface));
   color: color-mix(in srgb, var(--tag) 55%, white);
 }
+.tracked-block {
+  --tag: var(--accent);
+  background-color: color-mix(in srgb, var(--tag) 30%, var(--surface));
+  border-left: 3px solid var(--tag);
+  color: color-mix(in srgb, var(--tag) 35%, var(--ink));
+}
+[data-theme='dark'] .tracked-block {
+  background-color: color-mix(in srgb, var(--tag) 30%, var(--surface));
+  color: color-mix(in srgb, var(--tag) 40%, white);
+}
 .time-pill {
   --tag: var(--ink-3);
   background-color: color-mix(in srgb, var(--tag) 62%, var(--surface));

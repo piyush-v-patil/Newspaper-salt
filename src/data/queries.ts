@@ -231,3 +231,45 @@ export function useDueElsewhere(day: Day): Task[] {
     ) ?? []
   );
 }
+
+export interface TrackedBlock {
+  id: Id;
+  day: Day;
+  startMin: number;
+  endMin: number;
+  task: Task;
+  running: boolean;
+}
+
+/**
+ * Time actually worked on each of `days`, as blocks of minutes. An entry
+ * that crosses midnight is split between the two days; the running entry
+ * runs to `nowMs`.
+ */
+export function useTracked(days: Day[], nowMs: number, enabled: boolean): TrackedBlock[] {
+  const key = days.join(',');
+  const rows = useLiveQuery(async () => {
+    if (!enabled || days.length === 0) return [];
+    const sorted = [...days].sort();
+    const from = new Date(`${sorted[0]}T00:00:00`).getTime() - 24 * 3600_000;
+    const to = new Date(`${sorted[sorted.length - 1]}T00:00:00`).getTime() + 24 * 3600_000;
+    const entries = await db.timeEntries.where('start').between(from, to).toArray();
+    const tasks = await db.tasks.bulkGet(entries.map((e) => e.taskId));
+    return entries.flatMap((entry, i) => (tasks[i] && tasks[i]!.state !== 'deleted' ? [{ entry, task: tasks[i]! }] : []));
+  }, [key, enabled]);
+  return useMemo(() => {
+    const blocks: TrackedBlock[] = [];
+    for (const { entry, task } of rows ?? []) {
+      const end = entry.end ?? nowMs;
+      for (const day of days) {
+        const dayStart = new Date(`${day}T00:00:00`).getTime();
+        const startMin = Math.max(0, (entry.start - dayStart) / 60_000);
+        const endMin = Math.min(24 * 60, (end - dayStart) / 60_000);
+        if (endMin - startMin < 1) continue;
+        blocks.push({ id: `tracked-${entry.id}-${day}`, day, startMin, endMin, task, running: entry.end === null });
+      }
+    }
+    return blocks;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, key, nowMs]);
+}

@@ -36,6 +36,9 @@ interface UiState {
   floatingBarHidden: boolean;
   /** Calendar zoom: the height of one hour. */
   hourPx: number;
+  /** Draw the time actually worked on the calendar, beside the plan. */
+  showTracked: boolean;
+  toggleTracked: () => void;
   zoomCalendar: (direction: 1 | -1) => void;
   setCalendarSpan: (span: CalendarSpan) => void;
   cycleWorkloadMode: () => void;
@@ -69,6 +72,8 @@ export const useUi = create<UiState>()(
       navDrawerOpen: false,
       floatingBarHidden: false,
       hourPx: DEFAULT_HOUR_PX,
+      showTracked: false,
+      toggleTracked: () => set((s) => ({ showTracked: !s.showTracked })),
       zoomCalendar: (direction) =>
         set((s) => {
           const i = HOUR_HEIGHTS.indexOf(s.hourPx);
@@ -99,6 +104,7 @@ export const useUi = create<UiState>()(
         calendarSpan: s.calendarSpan,
         workloadMode: s.workloadMode,
         hourPx: s.hourPx,
+        showTracked: s.showTracked,
       }),
     },
   ),

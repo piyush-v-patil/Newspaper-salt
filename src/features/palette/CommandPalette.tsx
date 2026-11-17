@@ -61,6 +61,8 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
         return ui.openAddTask();
       case 'dark-mode':
         return void toggleDarkMode();
+      case 'tracked':
+        return ui.toggleTracked();
       case 'left-panel':
         return ui.toggleLeft();
       case 'right-panel':

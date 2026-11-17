@@ -5,7 +5,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { convertEventToTask, createEvent, deleteEvent, makeEventRepeat, stopEventSeries, updateEvent } from '@/data/commands/events';
 import { changeSession, removeSession, workingWindow } from '@/data/commands/sessions';
 import { setTaskCompleted } from '@/data/commands/tasks';
-import { useSchedule } from '@/data/queries';
+import { useSchedule, useTracked } from '@/data/queries';
+import { useNow } from '@/app/useNow';
 import { useChannelMap, useSettings } from '@/data/ReferenceData';
 import type { Repeat as RepeatRule, Task } from '@/data/types';
 import { nowMinutes } from '@/domain/clock';
@@ -21,7 +22,8 @@ import { calendarDropId, DAY_MIN, minToPx, pxToMin } from './metrics';
 
 type Block =
   | { kind: 'session'; id: string; day: Day; startMin: number; endMin: number; task: Task }
-  | { kind: 'event'; id: string; day: Day; startMin: number; endMin: number; title: string; seriesId: string | null };
+  | { kind: 'event'; id: string; day: Day; startMin: number; endMin: number; title: string; seriesId: string | null }
+  | { kind: 'tracked'; id: string; day: Day; startMin: number; endMin: number; task: Task; running: boolean };
 
 type DragMode = 'move' | 'resize-start' | 'resize-end' | 'create';
 
@@ -146,7 +148,7 @@ interface ColumnProps {
   drawing: DragState | null;
   editingId: string | null;
   onEdit: (id: string | null) => void;
-  onBlockPointerDown: (e: React.PointerEvent, block: Block, mode: DragMode) => void;
+  onBlockPointerDown: (e: React.PointerEvent, block: Exclude<Block, { kind: 'tracked' }>, mode: DragMode) => void;
   onEmptyPointerDown: (e: React.PointerEvent, day: Day) => void;
 }
 
@@ -160,6 +162,7 @@ function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, o
   const hours = workingWindow(settings, day);
   const clock = (min: number) => formatClock(min, settings.timeFormat);
   const laid = useMemo(() => layoutLanes(blocks), [blocks]);
+  const openTask = useOpenTask();
 
   return (
     <div
@@ -185,12 +188,37 @@ function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, o
           width: `calc(${100 / lanes}% - 5px)`,
         };
         const range = `${clock(block.startMin)} – ${clock(block.endMin)}`;
-        const handles = (
+        const handlesFor = (target: Exclude<Block, { kind: 'tracked' }>) => (
           <>
-            <span className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize" onPointerDown={(e) => onBlockPointerDown(e, block, 'resize-start')} />
-            <span className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize" onPointerDown={(e) => onBlockPointerDown(e, block, 'resize-end')} />
+            <span className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize" onPointerDown={(e) => onBlockPointerDown(e, target, 'resize-start')} />
+            <span className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize" onPointerDown={(e) => onBlockPointerDown(e, target, 'resize-end')} />
           </>
         );
+
+        if (block.kind === 'tracked') {
+          const color = block.task.channelId ? channels.get(block.task.channelId)?.color : undefined;
+          const tracked = `${clock(block.startMin)} – ${block.running ? 'now' : clock(block.endMin)}`;
+          return (
+            <div
+              key={block.id}
+              data-testid="tracked"
+              role="button"
+              tabIndex={-1}
+              aria-label={`Worked on ${block.task.title}, ${tracked}`}
+              title={`Worked on ${block.task.title}, ${tracked}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => openTask(block.task.id)}
+              className="tracked-block absolute cursor-pointer overflow-hidden rounded-md px-1.5 text-[12px] leading-tight"
+              style={{ ...style, ...(color ? ({ '--tag': color } as React.CSSProperties) : {}) }}
+            >
+              <div className="flex items-center gap-1" style={{ height: Math.min(height, 20) }}>
+                {block.running && <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-over" aria-hidden />}
+                <span className="min-w-0 flex-1 truncate font-medium">{block.task.title}</span>
+              </div>
+              {height >= 36 && <div className="tabular text-[11px] opacity-80">{tracked}</div>}
+            </div>
+          );
+        }
 
         if (block.kind === 'session') {
           const done = block.task.completedAt !== null;
@@ -224,7 +252,7 @@ function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, o
               >
                 <X size={11} />
               </button>
-              {handles}
+              {handlesFor(block)}
             </div>
           );
         }
@@ -243,7 +271,7 @@ function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, o
                   <span className="min-w-0 flex-1 truncate font-medium">{block.title}</span>
                 </div>
                 {height >= 36 && <div className="tabular text-[11px] text-ink-3">{range}</div>}
-                {handles}
+                {handlesFor(block)}
               </div>
             </PopoverAnchor>
             <PopoverContent side="left" label="Edit event">
@@ -290,6 +318,9 @@ export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader
   useUi((s) => s.hourPx);
   const settings = useSettings();
   const schedule = useSchedule(days);
+  const showTracked = useUi((s) => s.showTracked);
+  const nowMs = useNow(30_000, showTracked);
+  const tracked = useTracked(days, nowMs, showTracked);
   const openTask = useOpenTask();
   const current = useToday();
   const scroller = useRef<HTMLDivElement>(null);
@@ -323,13 +354,14 @@ export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader
     const list: Block[] = [
       ...schedule.sessions.map((s): Block => ({ kind: 'session', id: s.id, day: s.day, startMin: s.startMin, endMin: s.endMin, task: s.task })),
       ...schedule.events.map((e): Block => ({ kind: 'event', id: e.id, day: e.day, startMin: e.startMin, endMin: e.endMin, title: e.title, seriesId: e.seriesId ?? null })),
+      ...tracked.map((t): Block => ({ kind: 'tracked', ...t })),
     ];
     // While a block is being dragged, show it where it would land.
     if (drag?.target && drag.moved) {
       return list.map((b) => (b.id === drag.target!.id ? { ...b, day: drag.day, startMin: drag.startMin, endMin: drag.endMin } : b));
     }
     return list;
-  }, [schedule, drag]);
+  }, [schedule, drag, tracked]);
 
   const blocksByDay = useMemo(() => {
     const map = new Map<Day, Block[]>(days.map((d) => [d, []]));
@@ -345,7 +377,7 @@ export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader
     return null;
   }
 
-  function onBlockPointerDown(e: React.PointerEvent, block: Block, mode: DragMode) {
+  function onBlockPointerDown(e: React.PointerEvent, block: Exclude<Block, { kind: 'tracked' }>, mode: DragMode) {
     if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
     e.preventDefault();
     e.stopPropagation();
