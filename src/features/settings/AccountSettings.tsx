@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useState } from 'react';
 import { now } from '@/domain/clock';
-import { resolveFirstSync, signIn, signOut, signUp, syncNow, useSyncStatus } from '@/sync/controller';
+import { resendConfirmation, resolveFirstSync, signIn, signOut, signUp, syncNow, useSyncStatus } from '@/sync/controller';
 
 const field = 'h-9 w-full rounded-md border border-line bg-surface px-2.5 text-[14px] outline-none focus:border-accent';
 const primary = 'h-9 rounded-md bg-ink px-4 text-[13.5px] font-medium text-canvas disabled:opacity-40';
@@ -17,16 +17,31 @@ export function AccountForm({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
+  const [canResend, setCanResend] = useState(false);
+
   async function submit() {
     setBusy(true);
     setError(null);
     setNote(null);
-    if (mode === 'in') setError(await signIn(email, password));
-    else {
+    setCanResend(false);
+    if (mode === 'in') {
+      const problem = await signIn(email, password);
+      setError(problem && /not confirmed/i.test(problem) ? 'This account isn’t confirmed yet. Click the link in the email we sent, then sign in.' : problem);
+      setCanResend(!!problem && /not confirmed/i.test(problem));
+    } else {
       const result = await signUp(email, password);
       setError(result.error);
       setNote(result.note);
+      setCanResend(result.note !== null);
     }
+    setBusy(false);
+  }
+
+  async function resend() {
+    setBusy(true);
+    const problem = await resendConfirmation(email);
+    setError(problem);
+    setNote(problem ? null : `Sent again to ${email.trim()}. It can take a minute; check spam too.`);
     setBusy(false);
   }
 
@@ -57,6 +72,11 @@ export function AccountForm({ compact = false }: { compact?: boolean }) {
         </p>
       )}
       {note && <p className="text-[12.5px] text-done">{note}</p>}
+      {canResend && (
+        <button type="button" disabled={busy} onClick={() => void resend()} className="self-start text-[12.5px] text-accent hover:underline disabled:opacity-50">
+          Resend the confirmation email
+        </button>
+      )}
       <div className="flex items-center gap-3">
         <button type="submit" disabled={busy} className={primary}>
           {busy ? 'One moment…' : mode === 'in' ? 'Sign in' : 'Create account'}

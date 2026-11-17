@@ -7,6 +7,9 @@ import { now } from '@/domain/clock';
 import { Outbox, trackChanges } from './changes';
 import { markEverything, replaceWithRemote, syncOnce, type SyncState } from './engine';
 import { supabase, supabaseTransport } from './supabase';
+import { WEB_APP_URL } from './config';
+import { BASE } from '@/app/appPath';
+import { platform } from '@/platform';
 import type { SyncTransport } from './transport';
 
 export interface SyncStatus {
@@ -162,9 +165,22 @@ export async function signIn(email: string, password: string): Promise<string | 
 export async function signUp(email: string, password: string): Promise<{ error: string | null; note: string | null }> {
   const sb = supabase();
   if (!sb) return { error: 'Sync is not set up in this version of the app.', note: null };
-  const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
+  const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: confirmUrl() } });
   if (error) return { error: error.message, note: null };
-  return { error: null, note: data.session ? null : 'Check your email to confirm the account, then sign in.' };
+  return { error: null, note: data.session ? null : 'Check your email and click the link to confirm your account, then sign in here.' };
+}
+
+/** The confirmation link brings you back to this web app, or to the published one from the Windows app. */
+function confirmUrl(): string {
+  return platform.kind === 'web' ? new URL(BASE, location.origin).href : WEB_APP_URL;
+}
+
+/** Sends the confirmation email again. */
+export async function resendConfirmation(email: string): Promise<string | null> {
+  const sb = supabase();
+  if (!sb) return 'Sync is not set up in this version of the app.';
+  const { error } = await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: confirmUrl() } });
+  return error ? error.message : null;
 }
 
 /** Signs out. This device keeps its data; it simply stops syncing. */
