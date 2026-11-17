@@ -27,6 +27,8 @@ export interface Task {
   objectiveId: Id | null;
   /** When it has to be done by. Separate from the day it is planned for. */
   dueDay?: Day | null;
+  /** An optional tally, such as job applications sent or problems solved. */
+  counter?: TaskCounter | null;
   completedAt: number | null;
   completedDay: Day | null;
   /** Consecutive days this task has rolled over without activity. */
@@ -41,6 +43,14 @@ export interface Task {
   kind: TaskKind;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface TaskCounter {
+  count: number;
+  /** What to reach, if anything; reaching it only changes the colour. */
+  target: number | null;
+  /** What is being counted, such as "applications". */
+  unit: string;
 }
 
 export interface Subtask {
@@ -114,7 +124,7 @@ export interface Series {
   endDay: Day | null;
   /** Instances exist for every occurrence up to and including this day. */
   generatedThrough: Day;
-  template: Pick<Task, 'title' | 'notes' | 'channelId' | 'plannedMin'> & { subtasks: string[] };
+  template: Pick<Task, 'title' | 'notes' | 'channelId' | 'plannedMin'> & { subtasks: string[]; counter?: Pick<TaskCounter, 'target' | 'unit'> | null };
   /** "At roughly": each instance is timeboxed at this minute of the day. */
   atMin?: number | null;
 }

@@ -13,6 +13,7 @@ import {
   type ListEdge,
   type Subtask,
   type Task,
+  type TaskCounter,
   type TaskDay,
 } from '../types';
 import { recordUndo } from '../undo';
@@ -300,6 +301,7 @@ export const duplicateTask = command(async (id: Id): Promise<Task> => {
     seriesId: null,
     seriesDay: null,
     edited: false,
+    counter: source.counter ? { ...source.counter, count: 0 } : source.counter,
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -385,4 +387,18 @@ export const mergeTasks = command(async (sourceId: Id, targetId: Id): Promise<vo
     },
     true,
   );
+});
+
+/** Adds, changes or removes a task's counter. */
+export const setCounter = command((id: Id, counter: TaskCounter | null): Promise<void> =>
+  patchTask(id, { counter, edited: true }, counter ? 'Change counter' : 'Remove counter'),
+);
+
+/** Counts one up (or down). Counting is activity, so it keeps the task out of the archive. */
+export const bumpCounter = command(async (id: Id, by: 1 | -1): Promise<void> => {
+  const task = await requireTask(id);
+  if (!task.counter) return;
+  const count = Math.max(0, task.counter.count + by);
+  if (count === task.counter.count) return;
+  return patchTask(id, { counter: { ...task.counter, count }, lastActivityDay: today() }, by > 0 ? 'Counted one' : 'Counted one less');
 });

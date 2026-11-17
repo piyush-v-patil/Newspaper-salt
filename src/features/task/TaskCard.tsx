@@ -1,10 +1,10 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
-import { CalendarDays, Clock, Flag, Repeat, Target } from 'lucide-react';
+import { CalendarDays, Clock, Flag, Plus, Repeat, Tally5, Target } from 'lucide-react';
 import { autoScheduleTask } from '@/data/commands/sessions';
 import { useUi } from '@/app/uiStore';
-import { setBacklogPriority, setChannel, setDailyPriority, setDueDay, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
+import { bumpCounter, setBacklogPriority, setChannel, setCounter, setDailyPriority, setDueDay, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { dueLabel } from '@/domain/dayLabels';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
@@ -74,6 +74,36 @@ function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) 
       {hasActual && <span className="text-ink-3">/</span>}
       {!empty && <span>{task.plannedMin === null ? '–:––' : formatMinutes(task.plannedMin)}</span>}
     </button>
+  );
+}
+
+/** "3/10" with a + to count one more. Green once the target is reached. */
+export function CounterPill({ task }: { task: Task }) {
+  const counter = task.counter;
+  if (!counter) return null;
+  const reached = counter.target !== null && counter.count >= counter.target;
+  const what = counter.unit || 'counted';
+  return (
+    <span
+      data-testid="counter"
+      title={`${counter.count}${counter.target !== null ? ` of ${counter.target}` : ''} ${what}`}
+      className={`tabular flex h-[20px] shrink-0 items-center gap-0.5 rounded pl-1.5 text-[11.5px] font-medium ${reached ? 'bg-done-soft text-done' : 'bg-hover text-ink-2'}`}
+    >
+      {counter.count}
+      {counter.target !== null && <span className="opacity-70">/{counter.target}</span>}
+      <button
+        type="button"
+        aria-label={`Count one more for ${task.title}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          void bumpCounter(task.id, 1);
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="ml-0.5 grid h-[20px] w-[18px] place-items-center rounded-r hover:bg-black/5 dark:hover:bg-white/10"
+      >
+        <Plus size={11} strokeWidth={2.5} />
+      </button>
+    </span>
   );
 }
 
@@ -214,6 +244,17 @@ export function TaskCardBody({ task }: { task: Task }) {
               <CardIcon label="Link to objective" active={task.objectiveId ? 'text-accent' : undefined} onClick={open('objective')}>
                 <Target size={15} />
               </CardIcon>
+              {!task.counter && (
+                <CardIcon
+                  label="Add a counter"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void setCounter(task.id, { count: 0, target: null, unit: '' });
+                  }}
+                >
+                  <Tally5 size={15} />
+                </CardIcon>
+              )}
               {task.seriesId && (
                 <span className="px-0.5 text-ink-3" title="Repeats">
                   <Repeat size={13} aria-hidden />
@@ -221,6 +262,7 @@ export function TaskCardBody({ task }: { task: Task }) {
               )}
             </span>
           )}
+          <CounterPill task={task} />
           {rollover}
           {task.dueDay && (
             <button

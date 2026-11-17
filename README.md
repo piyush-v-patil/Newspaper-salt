@@ -75,5 +75,16 @@ Phases 0 to 6 of 8 are done.
 
 - **Phase 6:** first run and settings. Setup asks for a name, workday hours and days, a workload limit, starter channels and a planning time, then leads into a coached first plan; nothing else opens until that plan is done. Settings covers general preferences, task placement and archiving, working hours per day, every ritual's time and reminder, timeboxing rules, focus and breaks, channels and contexts, a shortcut list, and your data (export a backup, restore one, or erase everything). Weekly planning and review are now offered at their set times too.
 
-Since then: a month range on the calendar, turning an event into a task, repeating events (every day, weekdays, or weekly), and faded copies of work done on earlier days for tasks that moved on. Still not built: editing a time entry's start and end, and showing tracked time on the calendar.
+Since then: a month range on the calendar, turning an event into a task, repeating events, faded copies of work done on earlier days for tasks that moved on, colour themes for light and dark, and:
+
+- **Due dates** separate from the planned day, with a notice on Today for tasks due but planned elsewhere; date pickers accept typed dates ("dec 3").
+- **Tracked time:** time individual subtasks, edit an entry's start and end or log one by hand, show what you actually worked as solid blocks on the calendar, and time a second task alongside the main one.
+- **Repeating tasks** "at roughly" a time (timeboxed automatically) and a way to change how often an existing series repeats; **repeating events** every other week, monthly or yearly, with "Apply to all upcoming" and "Delete this and following".
+- **Setup** asks for fixed weekly commitments (lunch, stand-up…) and turns them into repeating events; a **workload limit per weekday**; **channel hours** for auto-scheduling.
+- **Add-task shortcuts** `$` objective, `>` subtask of another task, `<` backlog folder.
+- **Highlights** can be starred and reordered, with a "Starred only" view.
+- **Merge** a task into another, and **sort** a day by time then priority.
+- **Counters** on tasks (applications sent, problems solved), with a target, `+`/`-` keys, and a fresh count on each day of a repeating task.
+
+Still to do: automatic backups.
 

@@ -1,7 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { useSearch } from '@tanstack/react-router';
-import { Copy, Ellipsis, Layers, Merge, Repeat, Trash2, X } from 'lucide-react';
+import { Copy, Ellipsis, Layers, Merge, Repeat, Tally5, Trash2, X } from 'lucide-react';
+import { CounterEditor } from './CounterEditor';
 import { toggleParallelTimer } from '@/data/commands/timer';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
   moveTask,
   renameTask,
   setChannel,
+  setCounter,
   setDailyPriority,
   setDueDay,
   setPlannedTime,
@@ -114,6 +116,11 @@ function TaskPageBody({ task, onClose, onOpen }: { task: Task; onClose: () => vo
                     <Layers size={14} /> {alongside ? 'Stop timing alongside' : 'Time alongside'}
                   </Menu.Item>
                 )}
+                {!task.counter && (
+                  <Menu.Item className={menuItem} onSelect={() => void setCounter(task.id, { count: 0, target: null, unit: '' })}>
+                    <Tally5 size={14} /> Add counter
+                  </Menu.Item>
+                )}
                 <Menu.Item className={menuItem} onSelect={() => setMergeOpen(true)}>
                   <Merge size={14} /> Merge into…
                 </Menu.Item>
@@ -148,6 +155,7 @@ function TaskPageBody({ task, onClose, onOpen }: { task: Task; onClose: () => vo
           </span>
           <TitleField task={task} />
         </div>
+        <CounterEditor task={task} />
         <section aria-label="Subtasks" className="pl-[26px]">
           <Subtasks taskId={task.id} subtasks={subtasks} />
         </section>

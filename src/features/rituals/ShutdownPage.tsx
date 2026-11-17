@@ -33,6 +33,12 @@ function TaskLine({ task, minutes, faded = false }: { task: Task; minutes: numbe
   return (
     <div className={`flex items-baseline gap-2 rounded-lg border border-line px-3 py-2 text-[13.5px] ${faded ? 'text-ink-2' : ''}`}>
       <span className={`min-w-0 flex-1 truncate ${task.completedAt !== null ? '' : 'text-ink-2'}`}>{task.title}</span>
+      {task.counter && (
+        <span className="tabular shrink-0 text-[12px] text-ink-2" title={task.counter.unit || 'Counter'}>
+          {task.counter.count}
+          {task.counter.target !== null && `/${task.counter.target}`} {task.counter.unit}
+        </span>
+      )}
       <span className="tabular shrink-0 text-[12px] text-ink-3">
         {minutes > 0 ? formatMinutes(minutes) : '–:––'}
         {task.plannedMin !== null && ` / ${formatMinutes(task.plannedMin)}`}

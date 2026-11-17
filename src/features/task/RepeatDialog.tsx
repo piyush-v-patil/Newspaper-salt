@@ -160,7 +160,7 @@ function NewSeries({ task, onDone }: { task: Task; onDone: () => void }) {
     <RepeatForm
       task={task}
       submitLabel="Repeat"
-      note="starting with this task. Its subtasks, notes, channel and planned time are copied to each one."
+      note="starting with this task. Its subtasks, notes, channel, planned time and counter target are copied to each one; counts start at 0."
       onSubmit={(repeat, atMin) => {
         void makeRecurring(task.id, repeat, atMin);
         onDone();
@@ -205,7 +205,7 @@ function ExistingSeries({ task, onDone }: { task: Task; onDone: () => void }) {
       </button>
       <button type="button" className={action} onClick={() => run(applyToSeries(task.id))}>
         <span className="text-[14px] font-medium">Update all incomplete instances to match this task</span>
-        <span className="text-[12.5px] text-ink-3">Copies its title, notes, channel and planned time.</span>
+        <span className="text-[12.5px] text-ink-3">Copies its title, notes, channel, planned time and counter target.</span>
       </button>
       {series.endDay === null && (
         <button type="button" className={action} onClick={() => run(stopRepeating(series.id))}>

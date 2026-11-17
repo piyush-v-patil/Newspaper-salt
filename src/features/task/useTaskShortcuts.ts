@@ -3,7 +3,7 @@ import { appPath } from '@/app/appPath';
 import { useEffect } from 'react';
 import { useUi } from '@/app/uiStore';
 import { autoScheduleTask, clearSessions } from '@/data/commands/sessions';
-import { deleteTask, duplicateTask, moveTask, nudgeTask, setTaskCompleted, snoozeTask } from '@/data/commands/tasks';
+import { bumpCounter, deleteTask, duplicateTask, moveTask, nudgeTask, setTaskCompleted, snoozeTask } from '@/data/commands/tasks';
 import { db, getSettings } from '@/data/db';
 import { BACKLOG } from '@/data/types';
 import { today } from '@/domain/clock';
@@ -135,6 +135,12 @@ export function useTaskShortcuts(): void {
             focus.setFocusSubtaskOnOpen(true);
             openTask(id);
           });
+        case '+':
+        case '=':
+          // Count one more on a task with a counter; nothing otherwise.
+          return act(() => bumpCounter(id, 1));
+        case '-':
+          return act(() => bumpCounter(id, -1));
         case 'x':
         case 'X':
           // X finds the next free time; Shift+X keeps the task in one block.

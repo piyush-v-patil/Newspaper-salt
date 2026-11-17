@@ -14,6 +14,7 @@ import { CalendarPanel } from '@/features/calendar/CalendarPanel';
 import { ChannelTag } from '@/features/task/ChannelTag';
 import { NotesEditor } from '@/features/task/NotesEditor';
 import { Subtasks } from '@/features/task/Subtasks';
+import { CounterEditor } from '@/features/task/CounterEditor';
 import { TitleField } from '@/features/task/TaskPage';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { completeAndAdvance, nextTaskToday, takeBreak, toggleTaskTimer } from './actions';
@@ -200,6 +201,7 @@ export function FocusPage({ taskId }: { taskId?: Id }) {
             </div>
           </div>
 
+          <CounterEditor task={task} />
           <section aria-label="Subtasks" className="pl-[26px]">
             <Subtasks taskId={task.id} subtasks={subtasks} />
           </section>

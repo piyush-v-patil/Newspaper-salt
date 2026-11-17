@@ -34,6 +34,8 @@ async function addInstance(series: Series, day: Day): Promise<void> {
     seriesId: series.id,
     seriesDay: day,
     edited: false,
+    // A counter starts again from nothing on each occurrence.
+    counter: series.template.counter ? { count: 0, target: series.template.counter.target, unit: series.template.counter.unit } : null,
     kind: 'task',
     createdAt: stamp,
     updatedAt: stamp,
@@ -89,7 +91,14 @@ export async function extendAllSeries(): Promise<void> {
 
 async function templateFrom(task: Task): Promise<Series['template']> {
   const subtasks = (await db.subtasks.where('taskId').equals(task.id).toArray()).sort((a, b) => compareKeys(a.order, b.order));
-  return { title: task.title, notes: task.notes, channelId: task.channelId, plannedMin: task.plannedMin, subtasks: subtasks.map((s) => s.title) };
+  return {
+    title: task.title,
+    notes: task.notes,
+    channelId: task.channelId,
+    plannedMin: task.plannedMin,
+    subtasks: subtasks.map((s) => s.title),
+    counter: task.counter ? { target: task.counter.target, unit: task.counter.unit } : null,
+  };
 }
 
 /** Makes a task repeat. The task becomes the first instance; the rest are created up to a month ahead. */
@@ -175,7 +184,9 @@ export const applyToSeries = command(async (taskId: Id): Promise<number> => {
   const open = (await db.tasks.where('seriesId').equals(series.id).toArray()).filter((t) => t.state === 'active' && t.completedAt === null && t.id !== taskId);
   await db.series.update(series.id, { template });
   for (const instance of open) {
-    await db.tasks.update(instance.id, { title: template.title, notes: template.notes, channelId: template.channelId, plannedMin: template.plannedMin, updatedAt: now() });
+    // The counter's target and unit follow; each instance keeps its own count.
+    const counter = template.counter ? { count: instance.counter?.count ?? 0, ...template.counter } : null;
+    await db.tasks.update(instance.id, { title: template.title, notes: template.notes, channelId: template.channelId, plannedMin: template.plannedMin, counter, updatedAt: now() });
   }
   recordUndo('Update series', async () => {
     await db.series.put(series);

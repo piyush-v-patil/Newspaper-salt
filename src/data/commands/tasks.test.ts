@@ -361,3 +361,37 @@ describe('merge and sort', () => {
     expect(await titles()).toEqual(['x', 'Later', 'Urgent']);
   });
 });
+
+describe('counters', () => {
+  it('counts up and down, never below zero, and undoes a miscount', async () => {
+    const { bumpCounter, setCounter } = await import('./tasks');
+    const task = await createTask({ title: 'Job applications' });
+    await setCounter(task.id, { count: 0, target: 10, unit: 'applications' });
+    await bumpCounter(task.id, 1);
+    await bumpCounter(task.id, 1);
+    await bumpCounter(task.id, 1);
+    expect((await db.tasks.get(task.id))?.counter).toEqual({ count: 3, target: 10, unit: 'applications' });
+    await undoLast();
+    expect((await db.tasks.get(task.id))?.counter?.count).toBe(2);
+    await bumpCounter(task.id, -1);
+    await bumpCounter(task.id, -1);
+    await bumpCounter(task.id, -1);
+    expect((await db.tasks.get(task.id))?.counter?.count).toBe(0);
+    // A task without a counter is left alone.
+    const plain = await createTask({ title: 'Plain' });
+    await bumpCounter(plain.id, 1);
+    expect((await db.tasks.get(plain.id))?.counter).toBeUndefined();
+  });
+
+  it('a repeating task’s counter keeps its target, and each day starts at 0', async () => {
+    const { bumpCounter, setCounter } = await import('./tasks');
+    const { makeRecurring } = await import('./series');
+    const task = await createTask({ title: 'Leetcode' });
+    await setCounter(task.id, { count: 0, target: 3, unit: 'problems' });
+    await bumpCounter(task.id, 1);
+    const series = await makeRecurring(task.id, { kind: 'daily', interval: 1, weekdays: [] });
+    const tomorrow = (await db.tasks.where('seriesId').equals(series.id).toArray()).find((t) => t.id !== task.id && t.day > (task.day as string))!;
+    expect(tomorrow.counter).toEqual({ count: 0, target: 3, unit: 'problems' });
+    expect((await db.tasks.get(task.id))?.counter?.count).toBe(1);
+  });
+});

@@ -61,6 +61,8 @@ export const SHORTCUTS: { group: string; items: { keys: string[]; action: string
     group: 'On a task',
     items: [
       { keys: ['C'], action: 'Complete' },
+      { keys: ['+'], action: 'Count one more, on a task with a counter' },
+      { keys: ['-'], action: 'Count one less' },
       { keys: ['Space'], action: 'Start or stop the timer' },
       { keys: ['F'], action: 'Focus on it' },
       { keys: ['K'], action: 'Take a break' },
