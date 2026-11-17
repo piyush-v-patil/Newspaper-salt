@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { NavToggle } from '@/app/LeftNav';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { updateProfile } from '@/data/commands/profile';
 import { updateSettings } from '@/data/commands/settings';
 import { useProfile, useSettings } from '@/data/ReferenceData';
@@ -8,6 +8,7 @@ import type { Settings } from '@/data/types';
 import { formatMinutes } from '@/domain/dates';
 import { SHORTCUTS } from '@/features/help/shortcuts';
 import { Kbd } from '@/ui/Kbd';
+import { platform } from '@/platform';
 import { ChannelsSettings } from './ChannelsSettings';
 import { Group, NumberInput, Row, Select, TimeInput, Toggle } from './controls';
 import { DataSettings } from './DataSettings';
@@ -32,6 +33,27 @@ const weekdayOptions = WEEKDAYS.map((d) => ({ value: d, label: WEEKDAY_NAMES[d] 
 
 function set(patch: Partial<Settings>) {
   void updateSettings(patch);
+}
+
+/** Desktop only: start with the computer, waiting in the tray. */
+function LaunchAtLogin() {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    void platform.launchAtLogin?.get().then(setOn, () => setOn(false));
+  }, []);
+  return (
+    <Row label="Open when you sign in" description="Starts quietly in the tray, so reminders arrive without opening the app." htmlFor="setting-autostart">
+      <Toggle
+        id="setting-autostart"
+        label="Open when you sign in"
+        checked={on ?? false}
+        onChange={(next) => {
+          setOn(next);
+          void platform.launchAtLogin?.set(next);
+        }}
+      />
+    </Row>
+  );
 }
 
 function General() {
@@ -96,6 +118,7 @@ function General() {
             onChange={(defaultView) => set({ defaultView })}
           />
         </Row>
+        {platform.launchAtLogin && <LaunchAtLogin />}
         <Row label="Celebrations" description="A moment of confetti when you finish planning, shut down, or clear the day." htmlFor="setting-celebrations">
           <Toggle id="setting-celebrations" label="Celebrations" checked={settings.celebrations} onChange={(celebrations) => set({ celebrations })} />
         </Row>
@@ -297,6 +320,11 @@ function Focus() {
             <NumberInput label="Break length in minutes" value={breaks.breakMin} min={1} max={60} suffix="minutes" onChange={(breakMin) => set({ breakReminders: { ...breaks, breakMin } })} />
           </Row>
         </>
+      )}
+      {platform.canFloatFocusBar && (
+        <Row label="Floating focus bar" description="Keeps the task in progress and its timer in a small bar above other apps. Ctrl+Shift+F puts it away." htmlFor="setting-floating">
+          <Toggle id="setting-floating" label="Floating focus bar" checked={settings.floatingFocusBar} onChange={(floatingFocusBar) => set({ floatingFocusBar })} />
+        </Row>
       )}
       <Row label="Chime at the planned time" description="A soft sound when a running timer reaches the task’s estimate." htmlFor="setting-sounds">
         <Toggle id="setting-sounds" label="Chime at the planned time" checked={settings.timerSounds} onChange={(timerSounds) => set({ timerSounds })} />

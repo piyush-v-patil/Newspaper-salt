@@ -91,6 +91,14 @@ export const SHORTCUTS: { group: string; items: { keys: string[]; action: string
     ],
   },
   {
+    group: 'From any app (Windows app)',
+    items: [
+      { keys: ['Ctrl', 'Shift', 'A'], action: 'Add a task' },
+      { keys: ['Ctrl', 'Shift', 'Space'], action: 'Start or stop the timer' },
+      { keys: ['Ctrl', 'Shift', 'F'], action: 'Show or hide the floating focus bar' },
+    ],
+  },
+  {
     group: 'Rituals and focus',
     items: [
       { keys: ['←'], action: 'Previous step' },

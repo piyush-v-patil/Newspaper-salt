@@ -3,6 +3,7 @@ import { useSettings } from '@/data/ReferenceData';
 import { isDay, type Day } from '@/domain/dates';
 import { BoardPage } from '@/features/board/BoardPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
+import { FloatingFocusBar } from '@/features/focus/FloatingFocusBar';
 import { FocusPage } from '@/features/focus/FocusPage';
 import { HighlightsPage } from '@/features/rituals/HighlightsPage';
 import { PlanPage } from '@/features/rituals/PlanPage';
@@ -33,6 +34,7 @@ const indexRoute = createRoute({
   },
 });
 const welcomeRoute = createRoute({ getParentRoute: parent, path: '/welcome', component: SetupPage });
+const focusBarRoute = createRoute({ getParentRoute: parent, path: '/focusbar', component: FloatingFocusBar });
 
 const todayRoute = createRoute({
   getParentRoute: parent,
@@ -101,6 +103,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   welcomeRoute,
+  focusBarRoute,
   todayRoute,
   weekRoute,
   boardRoute,

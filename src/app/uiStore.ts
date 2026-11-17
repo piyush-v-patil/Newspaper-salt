@@ -30,6 +30,8 @@ interface UiState {
   shortcutsOpen: boolean;
   /** The navigation opened as a drawer, when it is not docked. */
   navDrawerOpen: boolean;
+  /** Desktop: the floating focus bar was put away with its shortcut. */
+  floatingBarHidden: boolean;
   setCalendarSpan: (span: CalendarSpan) => void;
   cycleWorkloadMode: () => void;
   setNoRoomTask: (id: Id | null) => void;
@@ -60,6 +62,7 @@ export const useUi = create<UiState>()(
       paletteOpen: false,
       shortcutsOpen: false,
       navDrawerOpen: false,
+      floatingBarHidden: false,
       setCalendarSpan: (calendarSpan) => set({ calendarSpan }),
       cycleWorkloadMode: () =>
         set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : s.workloadMode === 'work' ? 'actual' : 'all' })),

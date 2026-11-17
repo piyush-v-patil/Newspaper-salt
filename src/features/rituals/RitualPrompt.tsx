@@ -1,5 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { notifyIfAway } from '@/app/useDesktop';
 import { useNow } from '@/app/useNow';
 import { useRunningTimer } from '@/data/queries';
 import { useProfile, useSettings } from '@/data/ReferenceData';
@@ -91,6 +93,11 @@ export function RitualPrompt() {
     else useSnoozes.setState({ weeklyReviewSkippedFor: status.today });
   };
   const copy = offer ? COPY[offer] : COPY.plan;
+
+  // If the app is in the background when a ritual comes due, say so outside it too.
+  useEffect(() => {
+    if (offer) notifyIfAway(COPY[offer].title, COPY[offer].body);
+  }, [offer]);
   const greeting = `${profile.name ? `${greet(nowMs)}, ${profile.name}` : greet(nowMs)}.`;
 
   return (

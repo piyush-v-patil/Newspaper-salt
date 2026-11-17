@@ -208,6 +208,8 @@ export interface Settings {
   breakReminders: { on: boolean; workMin: number; breakMin: number };
   /** Play a chime when a timer reaches the task's planned time. */
   timerSounds: boolean;
+  /** Desktop app: keep a small focus bar floating above other apps while a task is in progress. */
+  floatingFocusBar: boolean;
   /** Consecutive rollover days before a task is archived; null turns it off. */
   archiveAfterDays: number | null;
   celebrations: boolean;

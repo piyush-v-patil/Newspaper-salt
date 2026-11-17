@@ -197,3 +197,24 @@ export function useWorkedOn(days: Day[], today: Day): Map<Day, WorkedOn[]> {
   return result ?? EMPTY_WORKED_ON;
 }
 const EMPTY_WORKED_ON = new Map<Day, WorkedOn[]>();
+
+/** A paused task stays "current" this long after its last timed stretch. */
+const RECENT_WORK_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * The task being worked on: the one being timed, or else the one most
+ * recently timed if it is unfinished and was worked on in the last few hours.
+ * Read from stored data, so every window agrees on it.
+ */
+export function useCurrentFocusTask(): Task | null {
+  return (
+    useLiveQuery(async () => {
+      const timer = (await db.meta.get('timer'))?.value as RunningTimer | undefined;
+      const last = await db.timeEntries.orderBy('start').last();
+      const id = timer?.taskId ?? (last && last.end !== null && Date.now() - last.end < RECENT_WORK_MS ? last.taskId : null);
+      if (!id) return null;
+      const task = await db.tasks.get(id);
+      return task && task.state === 'active' && task.completedAt === null ? task : null;
+    }, []) ?? null
+  );
+}

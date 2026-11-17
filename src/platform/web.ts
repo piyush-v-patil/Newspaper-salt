@@ -1,24 +1,19 @@
-import type { Platform } from './index';
+import type { Platform } from './types';
 
 const baseTitle = 'Life Of Pi';
 
 export const webPlatform: Platform = {
   kind: 'web',
 
+  // A tab only notifies if the person already allowed it; asking needs a click on something that explains why.
   async notify(title, body) {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false;
     new Notification(title, { body });
     return true;
   },
 
-  async requestNotificationPermission() {
-    if (typeof Notification === 'undefined') return false;
-    if (Notification.permission === 'granted') return true;
-    return (await Notification.requestPermission()) === 'granted';
-  },
-
   // A browser tab cannot listen for keys while another app is focused.
-  registerGlobalShortcut() {
+  async registerGlobalShortcut() {
     return () => {};
   },
 
@@ -28,6 +23,13 @@ export const webPlatform: Platform = {
   },
 
   canFloatFocusBar: false,
+  async setFloatingFocusBar() {},
+
+  async showMainWindow() {
+    window.focus();
+  },
+
+  launchAtLogin: null,
 
   async saveTextFile(fileName, text, mimeType) {
     const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
@@ -39,5 +41,6 @@ export const webPlatform: Platform = {
     link.remove();
     // Give the browser a moment to start the download before releasing the file.
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    return true;
   },
 };

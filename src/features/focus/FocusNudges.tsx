@@ -1,4 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
+import { notifyIfAway } from '@/app/useDesktop';
+import { formatMinutes } from '@/domain/dates';
 import { useEffect, useMemo } from 'react';
 import { useNow } from '@/app/useNow';
 import { useRunningTimer, useSchedule, useTask } from '@/data/queries';
@@ -46,7 +48,14 @@ export function FocusNudges() {
     if (!reachedPlan || !running || chimedEntryId === running.entryId) return;
     useFocus.setState({ chimedEntryId: running.entryId });
     if (settings.timerSounds) playChime();
-  }, [reachedPlan, running, chimedEntryId, settings.timerSounds]);
+    if (task) notifyIfAway('Planned time reached', `${task.title} has reached its ${formatMinutes(task.plannedMin ?? 0)} estimate.`);
+  }, [reachedPlan, running, chimedEntryId, settings.timerSounds, task]);
+
+  // A break that comes due while the app is in the background.
+  const breakDueNow = running !== null && (settings.breakReminders.on || pomodoro) && nextBreakPromptAt !== null && nowMs >= nextBreakPromptAt;
+  useEffect(() => {
+    if (breakDueNow) notifyIfAway('Ready for a break?', 'You have been working for a while.');
+  }, [breakDueNow]);
 
   const breakOver = breakEndsAt !== null && nowMs >= breakEndsAt;
   const breakDue = running !== null && (settings.breakReminders.on || pomodoro) && nextBreakPromptAt !== null && nowMs >= nextBreakPromptAt;

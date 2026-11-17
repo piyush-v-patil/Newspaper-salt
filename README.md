@@ -11,6 +11,29 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
+## The Windows app
+
+The same app, wrapped as a desktop program with [Tauri](https://tauri.app). On top of the web version it adds:
+
+- a tray icon whose tooltip shows the running timer; closing the window keeps the app in the tray
+- shortcuts that work from any app: `Ctrl+Shift+A` add a task, `Ctrl+Shift+Space` start or stop the timer, `Ctrl+Shift+F` show or hide the floating focus bar
+- a small focus bar that floats above other apps while a task is in progress
+- system notifications for rituals, breaks and planned time, when the app is in the background
+- an option to open at sign-in, quietly in the tray
+- a native save dialog for backups
+
+**Getting the installer.** Every push builds one on GitHub: open the repository's **Actions** tab, pick the latest **Windows app** run, and download **life-of-pi-windows-installer** under Artifacts. Pushing a tag such as `v0.1.0` also attaches it to a release. The installer is not code-signed, so Windows SmartScreen will warn on first run: choose **More info**, then **Run anyway**.
+
+**Building it yourself on Windows.** Install [Node 22](https://nodejs.org), [Rust](https://rustup.rs) and the Visual Studio C++ Build Tools, then:
+
+```bash
+npm install
+npm run desktop:dev     # run the desktop app with live reload
+npm run desktop:build   # build the installer into src-tauri/target/release/bundle
+```
+
+**Your data.** The desktop app and the browser version keep separate data. To move between them, use **Settings → Your data → Export backup** in one and **Restore from a backup** in the other.
+
 ## Check it
 
 ```bash
@@ -27,7 +50,9 @@ npm run e2e        # browser tests against a production build
 | `src/features` | One folder per view |
 | `src/domain` | Pure rules (dates, ordering, and later rollover, workload, scheduling) |
 | `src/data` | Database schema, commands with undo, live queries |
-| `src/platform` | The one place OS-specific behaviour lives |
+| `src/platform` | The one place OS-specific behaviour lives: `web.ts` for browsers, `desktop.ts` for the Windows app |
+| `src-tauri` | The desktop shell: tray, window behaviour, plugins and installer settings |
+| `.github/workflows` | Tests on every push, and the Windows installer build |
 | `src/styles` | Design tokens |
 | `e2e` | Browser tests |
 

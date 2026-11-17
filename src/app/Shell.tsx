@@ -17,11 +17,21 @@ import { RightPanel } from './RightPanel';
 import { UndoToast } from './UndoToast';
 import { useTheme } from './theme';
 import { useDayChange } from './useToday';
+import { useDesktop } from './useDesktop';
 import { useLayout } from './useLayout';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
 
 /** Loads shared data first, so everything inside can rely on it being there. */
 export function Shell() {
+  // The floating focus bar is a window of its own with nothing around it.
+  const floating = useRouterState({ select: (s) => s.location.pathname === '/focusbar' });
+  if (floating) {
+    return (
+      <ReferenceDataProvider>
+        <Outlet />
+      </ReferenceDataProvider>
+    );
+  }
   return (
     <ReferenceDataProvider>
       <TaskDndRoot>
@@ -36,6 +46,7 @@ function ShellBody() {
   useGlobalShortcuts();
   useTaskShortcuts();
   useDayChange();
+  useDesktop();
   // Focus mode clears the panels away; the navigation still slides in from the left edge.
   // The same goes for the rituals, which bring their own columns.
   const pathname = useRouterState({ select: (s) => s.location.pathname });

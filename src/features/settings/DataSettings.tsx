@@ -18,8 +18,8 @@ export function DataSettings() {
 
   async function exportNow() {
     const stamp = now();
-    await platform.saveTextFile(`life-of-pi-backup-${format(new Date(stamp), 'yyyy-MM-dd')}.json`, await exportData(stamp), 'application/json');
-    setSaved(true);
+    const fileName = `life-of-pi-backup-${format(new Date(stamp), 'yyyy-MM-dd')}.json`;
+    setSaved(await platform.saveTextFile(fileName, await exportData(stamp), 'application/json'));
   }
 
   async function choose(selected: File | undefined) {
@@ -56,7 +56,7 @@ export function DataSettings() {
           <button type="button" onClick={() => void exportNow()} className={button}>
             Export backup
           </button>
-          {saved && <span className="text-[12.5px] text-done">Backup saved to your downloads.</span>}
+          {saved && <span className="text-[12.5px] text-done">{platform.kind === 'web' ? 'Backup saved to your downloads.' : 'Backup saved.'}</span>}
         </div>
       </section>
 
