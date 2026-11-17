@@ -1,15 +1,15 @@
 import { useDroppable } from '@dnd-kit/core';
 import { useToday } from '@/app/useToday';
-import { X } from 'lucide-react';
+import { Repeat, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { convertEventToTask, createEvent, deleteEvent, updateEvent } from '@/data/commands/events';
+import { convertEventToTask, createEvent, deleteEvent, makeEventRepeat, stopEventSeries, updateEvent } from '@/data/commands/events';
 import { changeSession, removeSession, workingWindow } from '@/data/commands/sessions';
 import { setTaskCompleted } from '@/data/commands/tasks';
 import { useSchedule } from '@/data/queries';
 import { useChannelMap, useSettings } from '@/data/ReferenceData';
-import type { Task } from '@/data/types';
+import type { Repeat as RepeatRule, Task } from '@/data/types';
 import { nowMinutes } from '@/domain/clock';
-import { formatClock, type Day } from '@/domain/dates';
+import { formatClock, weekdayOf, type Day } from '@/domain/dates';
 import { shortDate, weekdayName } from '@/domain/dayLabels';
 import { layoutLanes, snap, SNAP_MIN } from '@/domain/scheduling';
 import { useDnd } from '@/features/task/dndStore';
@@ -20,7 +20,7 @@ import { calendarDropId, DAY_MIN, HOUR_PX, minToPx, pxToMin } from './metrics';
 
 type Block =
   | { kind: 'session'; id: string; day: Day; startMin: number; endMin: number; task: Task }
-  | { kind: 'event'; id: string; day: Day; startMin: number; endMin: number; title: string };
+  | { kind: 'event'; id: string; day: Day; startMin: number; endMin: number; title: string; seriesId: string | null };
 
 type DragMode = 'move' | 'resize-start' | 'resize-end' | 'create';
 
@@ -46,6 +46,13 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const GUTTER = 44;
 const NEW_EVENT_SNAP = 15;
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const REPEATS: { label: string; repeat: (weekday: number) => RepeatRule }[] = [
+  { label: 'Every day', repeat: () => ({ kind: 'daily', interval: 1, weekdays: [] }) },
+  { label: 'Weekdays', repeat: () => ({ kind: 'weekdays', interval: 1, weekdays: [] }) },
+  { label: 'Weekly', repeat: (weekday) => ({ kind: 'weekly', interval: 1, weekdays: [weekday] }) },
+];
+
 function EventEditor({ block, timeLabel, onClose }: { block: Extract<Block, { kind: 'event' }>; timeLabel: string; onClose: () => void }) {
   const save = (title: string) => {
     const next = title.trim() || 'Untitled event';
@@ -68,6 +75,42 @@ function EventEditor({ block, timeLabel, onClose }: { block: Extract<Block, { ki
         className="rounded-md border border-line bg-transparent px-2 py-1.5 text-[13.5px] outline-none focus:border-accent"
       />
       <span className="tabular text-[12px] text-ink-3">{timeLabel}</span>
+      {block.seriesId ? (
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="flex items-center gap-1 text-ink-2">
+            <Repeat size={12} /> Repeats
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              void stopEventSeries(block.id);
+            }}
+            className="rounded px-1.5 py-0.5 text-ink-2 hover:bg-hover hover:text-ink"
+          >
+            Stop after this
+          </button>
+        </div>
+      ) : (
+        <select
+          aria-label="Repeat"
+          value=""
+          onChange={(e) => {
+            const choice = REPEATS[Number(e.target.value)];
+            if (!choice) return;
+            onClose();
+            void makeEventRepeat(block.id, choice.repeat(weekdayOf(block.day)));
+          }}
+          className="h-7 rounded-md border border-line bg-surface px-1.5 text-[12.5px] text-ink-2"
+        >
+          <option value="">Does not repeat</option>
+          {REPEATS.map((r, i) => (
+            <option key={r.label} value={i}>
+              {r.label === 'Weekly' ? `Every ${WEEKDAY_NAMES[weekdayOf(block.day)]}` : r.label}
+            </option>
+          ))}
+        </select>
+      )}
       <div className="flex items-center justify-between text-[12px]">
         <button
           type="button"
@@ -275,7 +318,7 @@ export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader
     if (!schedule) return [];
     const list: Block[] = [
       ...schedule.sessions.map((s): Block => ({ kind: 'session', id: s.id, day: s.day, startMin: s.startMin, endMin: s.endMin, task: s.task })),
-      ...schedule.events.map((e): Block => ({ kind: 'event', id: e.id, day: e.day, startMin: e.startMin, endMin: e.endMin, title: e.title })),
+      ...schedule.events.map((e): Block => ({ kind: 'event', id: e.id, day: e.day, startMin: e.startMin, endMin: e.endMin, title: e.title, seriesId: e.seriesId ?? null })),
     ];
     // While a block is being dragged, show it where it would land.
     if (drag?.target && drag.moved) {

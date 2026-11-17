@@ -71,5 +71,5 @@ Phases 0 to 6 of 8 are done.
 
 - **Phase 6:** first run and settings. Setup asks for a name, workday hours and days, a workload limit, starter channels and a planning time, then leads into a coached first plan; nothing else opens until that plan is done. Settings covers general preferences, task placement and archiving, working hours per day, every ritual's time and reminder, timeboxing rules, focus and breaks, channels and contexts, a shortcut list, and your data (export a backup, restore one, or erase everything). Weekly planning and review are now offered at their set times too.
 
-Not built yet within these phases: the month calendar range, turning an event into a task, repeating events, editing a time entry's start and end, showing tracked time on the calendar, and the faded "worked on this" copy a task leaves on earlier days.
+Since then: a month range on the calendar, turning an event into a task, repeating events (every day, weekdays, or weekly), and faded copies of work done on earlier days for tasks that moved on. Still not built: editing a time entry's start and end, and showing tracked time on the calendar.
 

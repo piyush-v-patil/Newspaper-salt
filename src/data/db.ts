@@ -7,6 +7,7 @@ import type {
   Channel,
   Context,
   DayRecord,
+  EventSeries,
   Objective,
   Profile,
   Series,
@@ -31,6 +32,7 @@ export class PiDatabase extends Dexie {
   sessions!: Table<Session, string>;
   events!: Table<CalendarEvent, string>;
   series!: Table<Series, string>;
+  eventSeries!: Table<EventSeries, string>;
   contexts!: Table<Context, string>;
   channels!: Table<Channel, string>;
   backlogFolders!: Table<BacklogFolder, string>;
@@ -54,6 +56,11 @@ export class PiDatabase extends Dexie {
       objectives: 'id, weekStart',
       days: 'day',
       weeks: 'weekStart',
+    });
+    // Version 2: repeating events.
+    this.version(2).stores({
+      events: 'id, day, seriesId',
+      eventSeries: 'id',
     });
 
     this.on('populate', (tx) => {

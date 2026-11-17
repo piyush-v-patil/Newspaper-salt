@@ -226,3 +226,30 @@ test('the month range shows each day’s items and opens a day on click', async 
   await expect(page.locator('[data-cal-day]')).toHaveCount(1);
   await expect(page.locator('[data-cal-day="2026-11-20"]')).toHaveCount(1);
 });
+
+test('an event can repeat, and auto-scheduling works around every occurrence', async ({ page }) => {
+  await openAt(page, '08:00');
+  await dragMouse(page, await pointAt(page, 9, 2), await pointAt(page, 10, 0));
+  await page.getByLabel('Event title').fill('Standup');
+  await page.getByLabel('Event title').press('Enter');
+  await page.getByTestId('event').click();
+  await page.getByLabel('Repeat').selectOption({ label: 'Weekdays' });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Tomorrow has it too, and a task scheduled there goes around it.
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(page.getByTestId('event')).toHaveAccessibleName('Standup, 09:00 – 10:00');
+  const row = page.getByLabel(/^Add task to \d/);
+  await row.fill('Deep work ~1h');
+  await row.press('Enter');
+  await row.press('Escape');
+  await card(page, 'Deep work').hover();
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('session')).toHaveAccessibleName('Deep work, 10:00 – 11:00');
+
+  // Stop it after tomorrow: the day after has none.
+  await page.getByTestId('event').click();
+  await page.getByRole('button', { name: 'Stop after this' }).click();
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(page.getByTestId('event')).toHaveCount(0);
+});

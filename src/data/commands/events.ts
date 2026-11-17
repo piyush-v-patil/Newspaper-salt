@@ -1,6 +1,8 @@
-import type { Day } from '@/domain/dates';
+import { today } from '@/domain/clock';
+import { shiftDay, type Day } from '@/domain/dates';
+import { occurrencesBetween } from '@/domain/recurrence';
 import { command, db } from '../db';
-import type { CalendarEvent, Id, Session, Task } from '../types';
+import type { CalendarEvent, EventSeries, Id, Repeat, Session, Task } from '../types';
 import { buildTask } from './tasks';
 import { recordUndo } from '../undo';
 
@@ -57,4 +59,65 @@ export const convertEventToTask = command(async (id: Id): Promise<Task | null> =
     true,
   );
   return task;
+});
+
+/** Repeating events are created this many days ahead, like recurring tasks. */
+const EVENT_WINDOW_DAYS = 30;
+
+async function extendEventSeries(series: EventSeries): Promise<void> {
+  const horizon = shiftDay(today(), EVENT_WINDOW_DAYS);
+  const until = series.endDay !== null && series.endDay < horizon ? series.endDay : horizon;
+  const from = shiftDay(series.generatedThrough, 1);
+  if (from > until) return;
+  const occurrences = occurrencesBetween(series.repeat, series.startDay, from, until).map(
+    (day): CalendarEvent => ({ id: crypto.randomUUID(), day, seriesId: series.id, ...series.template }),
+  );
+  await db.events.bulkAdd(occurrences);
+  await db.eventSeries.update(series.id, { generatedThrough: until });
+}
+
+/** Tops up every repeating event. Called by the start-of-day housekeeping. */
+export async function extendAllEventSeries(): Promise<void> {
+  for (const series of await db.eventSeries.toArray()) await extendEventSeries(series);
+}
+
+/** Makes an event repeat. The event becomes the first occurrence; the rest are created a month ahead. */
+export const makeEventRepeat = command(async (id: Id, repeat: Repeat): Promise<void> => {
+  const event = await db.events.get(id);
+  if (!event || event.seriesId) return;
+  const series: EventSeries = {
+    id: crypto.randomUUID(),
+    repeat,
+    startDay: event.day,
+    endDay: null,
+    generatedThrough: event.day,
+    template: { title: event.title, startMin: event.startMin, endMin: event.endMin, channelId: event.channelId, blocksTime: event.blocksTime },
+  };
+  await db.eventSeries.add(series);
+  await db.events.update(id, { seriesId: series.id });
+  await extendEventSeries(series);
+  recordUndo('Repeat event', async () => {
+    await db.events.where('seriesId').equals(series.id).filter((e) => e.id !== id).delete();
+    await db.events.update(id, { seriesId: null });
+    await db.eventSeries.delete(series.id);
+  });
+});
+
+/** Stops a repeating event after this occurrence: later ones are removed. */
+export const stopEventSeries = command(async (id: Id): Promise<void> => {
+  const event = await db.events.get(id);
+  if (!event?.seriesId) return;
+  const series = await db.eventSeries.get(event.seriesId);
+  if (!series) return;
+  const later = await db.events.where('seriesId').equals(series.id).filter((e) => e.day > event.day).toArray();
+  await db.events.bulkDelete(later.map((e) => e.id));
+  await db.eventSeries.update(series.id, { endDay: event.day });
+  recordUndo(
+    'Stopped repeating',
+    async () => {
+      await db.events.bulkPut(later);
+      await db.eventSeries.put(series);
+    },
+    true,
+  );
 });

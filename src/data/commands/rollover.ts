@@ -5,6 +5,7 @@ import { planRollover } from '@/domain/rollover';
 import { command, db, getSettings } from '../db';
 import type { Id, ListEdge } from '../types';
 import { recordUndo } from '../undo';
+import { extendAllEventSeries } from './events';
 import { extendAllSeries } from './series';
 import { getRunningTimer } from './timer';
 
@@ -69,6 +70,7 @@ export const runRollover = command(async (): Promise<{ moved: number; archived: 
   await eraseTasks(expired);
 
   await extendAllSeries();
+  await extendAllEventSeries();
 
   return { moved: plan.moves.length, archived: plan.archive.length };
 });

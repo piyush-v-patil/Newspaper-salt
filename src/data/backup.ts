@@ -9,6 +9,7 @@ const TABLES = [
   'sessions',
   'events',
   'series',
+  'eventSeries',
   'contexts',
   'channels',
   'backlogFolders',
@@ -18,6 +19,8 @@ const TABLES = [
 ] as const;
 
 export const BACKUP_VERSION = 1;
+/** Tables that older backups may not have. */
+const LATER_TABLES = ['eventSeries'] as const;
 const APP = 'life-of-pi';
 
 export interface Backup {
@@ -52,8 +55,11 @@ export function parseBackup(text: string): { ok: true; backup: Backup } | { ok: 
   if (typeof candidate.version !== 'number' || candidate.version > BACKUP_VERSION) {
     return { ok: false, reason: 'This backup was made by a newer version of Life Of Pi. Update the app, then try again.' };
   }
+  const tables = candidate.tables as Record<string, unknown>;
+  // Tables added after the first release may be missing from older backups; they start empty.
+  for (const name of LATER_TABLES) if (tables[name] === undefined) tables[name] = [];
   for (const name of TABLES) {
-    if (!Array.isArray((candidate.tables as Record<string, unknown>)[name])) {
+    if (!Array.isArray(tables[name])) {
       return { ok: false, reason: `This backup is incomplete: it has no ${name} list.` };
     }
   }

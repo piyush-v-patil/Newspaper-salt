@@ -76,6 +76,20 @@ export interface CalendarEvent {
   endMin: number;
   channelId: Id | null;
   blocksTime: boolean;
+  /** Set when the event is one occurrence of a repeating event. */
+  seriesId?: Id | null;
+}
+
+/** A repeating event, such as a daily standup. Its occurrences are ordinary events that point back here. */
+export interface EventSeries {
+  id: Id;
+  repeat: Repeat;
+  startDay: Day;
+  /** Set when the series is stopped; no occurrence is created after this day. */
+  endDay: Day | null;
+  /** Occurrences exist up to and including this day. */
+  generatedThrough: Day;
+  template: Pick<CalendarEvent, 'title' | 'startMin' | 'endMin' | 'channelId' | 'blocksTime'>;
 }
 
 export type RepeatKind = 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
