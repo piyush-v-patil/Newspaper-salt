@@ -20,6 +20,13 @@ async function patchMeta(page: Page, key: 'profile' | 'settings', patch: Record<
   );
 }
 
+/** Changes the profile directly, then reloads so the app picks it up. */
+export async function setProfile(page: Page, patch: Record<string, unknown>) {
+  await patchMeta(page, 'profile', patch);
+  await page.reload();
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+}
+
 /** Changes settings directly, then reloads so the app picks them up. */
 export async function setSettings(page: Page, patch: Record<string, unknown>) {
   await patchMeta(page, 'settings', patch);
@@ -39,7 +46,12 @@ export const test = base.extend<{ freshStart: boolean }>({
       await page.goto('/');
       await expect(page).toHaveURL(/\/welcome$/);
       await patchMeta(page, 'profile', { name: 'Pi', onboardingCompletedAt: 1, guidedPlansRemaining: 0, setupStep: 4 });
-      await patchMeta(page, 'settings', { autoPlanning: false, autoShutdown: false });
+      await patchMeta(page, 'settings', {
+        autoPlanning: false,
+        autoShutdown: false,
+        weeklyPlan: { weekday: 1, min: 8 * 60, auto: false },
+        weeklyReview: { weekday: 5, min: 15 * 60, auto: false },
+      });
     }
     await use(page);
   },

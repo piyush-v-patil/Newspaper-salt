@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, setProfile, test } from './fixtures';
 
 async function openAt(page: Page, dateTime: string) {
   await page.clock.install({ time: new Date(dateTime) });
@@ -94,6 +94,8 @@ test('an unfinished objective can be carried into the next week', async ({ page 
 
 test('weekly planning sets objectives and records a plan; weekly review reports on the week', async ({ page }) => {
   await openAt(page, '2026-11-16T08:30:00'); // Monday
+  // Someone who has been using the app for a while, so this week's plan is asked for.
+  await setProfile(page, { createdAt: new Date('2026-11-01T09:00:00').getTime() });
   const nav = page.getByRole('navigation', { name: 'Main' });
   const weeklyPlan = nav.getByRole('link', { name: /Plan/ }).nth(1);
   await expect(weeklyPlan).toContainText('Start');

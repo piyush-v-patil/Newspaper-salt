@@ -16,6 +16,8 @@ export interface Platform {
   setTimerIndicator(label: string | null): void;
   /** Whether the focus bar can float above other apps. */
   canFloatFocusBar: boolean;
+  /** Hands a text file to the person to save: a download in a browser, a save dialog on Windows. */
+  saveTextFile(fileName: string, text: string, mimeType: string): Promise<void>;
 }
 
 export const platform: Platform = webPlatform;

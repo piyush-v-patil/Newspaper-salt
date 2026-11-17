@@ -33,7 +33,7 @@ npm run e2e        # browser tests against a production build
 
 ## Status
 
-Phases 0 to 5 of 8 are done.
+Phases 0 to 6 of 8 are done.
 
 - **Phase 0:** project foundation, local storage, undo, app shell, light and dark themes.
 - **Phase 1:** tasks and the board. Add-task window with typing shortcuts (`~` time, `#` channel, `@` date, `!` priority), task cards, task page with subtasks and rich-text notes, channels and filter, the Today view, the day-column board with drag and drop, and the task keyboard shortcuts.
@@ -44,6 +44,7 @@ Phases 0 to 5 of 8 are done.
 
 - **Phase 5:** the weekly cycle and longer horizons. Backlog with time buckets, folders and its own priority; weekly objectives with linked tasks and progress on the This week view (`N`); weekly planning and weekly review; recurring tasks (daily, weekdays, weekly on chosen days, monthly, yearly, every N) that create a month ahead, never pile up when skipped, and can be updated or stopped as a series.
 
+- **Phase 6:** first run and settings. Setup asks for a name, workday hours and days, a workload limit, starter channels and a planning time, then leads into a coached first plan; nothing else opens until that plan is done. Settings covers general preferences, task placement and archiving, working hours per day, every ritual's time and reminder, timeboxing rules, focus and breaks, channels and contexts, a shortcut list, and your data (export a backup, restore one, or erase everything). Weekly planning and review are now offered at their set times too.
+
 Not built yet within these phases: the month calendar range, turning an event into a task, repeating events, editing a time entry's start and end, showing tracked time on the calendar, and the faded "worked on this" copy a task leaves on earlier days.
 
-Settings and first-run setup are placeholders until Phase 6.

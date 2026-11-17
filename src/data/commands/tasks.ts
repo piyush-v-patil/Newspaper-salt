@@ -111,10 +111,23 @@ export const setTaskCompleted = command(async (id: Id, completed: boolean): Prom
 
   const day = today();
   const settings = await getSettings();
+  let loggedEntryId: Id | null = null;
   await withSnapshot('Complete task', { taskIds: [id], days: [day] }, async () => {
     await db.tasks.update(id, { completedAt: now(), completedDay: day, lastActivityDay: day, updatedAt: now() });
     // Finishing a task stops its timer.
     if ((await getRunningTimer())?.taskId === id) await stopRunningTimer();
+
+    // With that setting on, a task finished without any tracked time today has its estimate logged as actual.
+    const task = await db.tasks.get(id);
+    if (settings.countPlannedAsActual && task?.plannedMin) {
+      const dayStart = new Date(`${day}T00:00:00`).getTime();
+      const trackedToday = (await db.timeEntries.where('taskId').equals(id).toArray()).some((e) => e.start >= dayStart);
+      if (!trackedToday) {
+        const end = now();
+        loggedEntryId = crypto.randomUUID();
+        await db.timeEntries.add({ id: loggedEntryId, taskId: id, subtaskId: null, start: Math.max(dayStart, end - task.plannedMin * 60_000), end });
+      }
+    }
 
     const time = nowMinutes();
     const onDay = await db.sessions.where('day').equals(day).toArray();
@@ -135,6 +148,8 @@ export const setTaskCompleted = command(async (id: Id, completed: boolean): Prom
         }
       }
     }
+  }, false, async () => {
+    if (loggedEntryId) await db.timeEntries.delete(loggedEntryId);
   });
 });
 

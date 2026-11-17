@@ -28,4 +28,16 @@ export const webPlatform: Platform = {
   },
 
   canFloatFocusBar: false,
+
+  async saveTextFile(fileName, text, mimeType) {
+    const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    // Give the browser a moment to start the download before releasing the file.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  },
 };

@@ -21,13 +21,21 @@ async function sessionsIn(scope: Scope): Promise<Session[]> {
  * together, and records one undo step that puts everything in scope back as
  * it was. Call it from inside a command; it does not queue by itself.
  */
-export async function withSnapshot<T>(label: string, scope: Scope, work: () => Promise<T>, announce = false): Promise<T> {
+export async function withSnapshot<T>(
+  label: string,
+  scope: Scope,
+  work: () => Promise<T>,
+  announce = false,
+  /** Anything else the command did that undo must reverse. */
+  alsoUndo?: () => Promise<void>,
+): Promise<T> {
   const tasksBefore = (await db.tasks.bulkGet(scope.taskIds ?? [])).filter((t) => t !== undefined);
   const sessionsBefore = await sessionsIn(scope);
   const value = await work();
   recordUndo(
     label,
     async () => {
+      await alsoUndo?.();
       const current = await sessionsIn(scope);
       await db.sessions.bulkDelete(current.map((s) => s.id));
       await db.sessions.bulkPut(sessionsBefore);

@@ -11,7 +11,7 @@ import { BacklogPage } from '@/features/lists/BacklogPage';
 import { WeekPage } from '@/features/week/WeekPage';
 import { WeeklyPlanPage, WeeklyReviewPage } from '@/features/rituals/WeeklyPages';
 import { SetupPage } from '@/features/setup/SetupPage';
-import { ComingSoon } from '@/features/placeholder/ComingSoon';
+import { SETTINGS_SECTIONS, SettingsPage, type SettingsSection } from '@/features/settings/SettingsPage';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
 
@@ -90,7 +90,12 @@ const backlogRoute = createRoute({ getParentRoute: parent, path: '/backlog', com
 const settingsRoute = createRoute({
   getParentRoute: parent,
   path: '/settings',
-  component: () => <ComingSoon title="Settings" phase={6} summary="Working hours, ritual times, rollover rules, channels and your data." />,
+  validateSearch: (search: Record<string, unknown>): { section?: SettingsSection } =>
+    SETTINGS_SECTIONS.some((s) => s.id === search.section) ? { section: search.section as SettingsSection } : {},
+  component: function Settings() {
+    const { section } = settingsRoute.useSearch();
+    return <SettingsPage section={section} />;
+  },
 });
 
 const routeTree = rootRoute.addChildren([

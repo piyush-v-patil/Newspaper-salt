@@ -139,3 +139,28 @@ describe('formatElapsed', () => {
     expect(formatElapsed(62 * 60_000 + 5_000)).toBe('1:02:05');
   });
 });
+
+describe('count planned time as actual', () => {
+  it('logs the estimate when a task is finished with nothing tracked, and undo removes it', async () => {
+    await db.meta.put({ key: 'settings', value: { countPlannedAsActual: true } });
+    const task = await createTask({ title: 'Quick call', plannedMin: 20 });
+    at(11, 0);
+    await setTaskCompleted(task.id, true);
+    expect(await minutesFor(task.id)).toBe(20);
+    await undoLast();
+    expect(await db.timeEntries.count()).toBe(0);
+  });
+
+  it('leaves tracked time alone, and does nothing when off', async () => {
+    const tracked = await createTask({ title: 'Tracked', plannedMin: 60 });
+    const plain = await createTask({ title: 'Plain', plannedMin: 30 });
+    await setTaskCompleted(plain.id, true);
+    expect(await minutesFor(plain.id)).toBe(0);
+
+    await db.meta.put({ key: 'settings', value: { countPlannedAsActual: true } });
+    await startTimer(tracked.id);
+    advance(10);
+    await setTaskCompleted(tracked.id, true);
+    expect(await minutesFor(tracked.id)).toBe(10);
+  });
+});

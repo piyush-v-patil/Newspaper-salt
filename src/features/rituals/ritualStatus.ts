@@ -3,9 +3,9 @@ import { useNow } from '@/app/useNow';
 import { useToday } from '@/app/useToday';
 import { workingWindow } from '@/data/commands/sessions';
 import { useDayRecord, useWeekRecord } from '@/data/queries';
-import { useSettings } from '@/data/ReferenceData';
+import { useProfile, useSettings } from '@/data/ReferenceData';
 import { nowMinutes } from '@/domain/clock';
-import { weekdayOf, type Day } from '@/domain/dates';
+import { fromDay, shiftDay, weekdayOf, type Day } from '@/domain/dates';
 import { isPlanningDue, isShutdownDue, planningTarget } from '@/domain/rituals';
 import { planningWeek, reviewWeek, weekStartOf } from '@/domain/weeks';
 
@@ -16,6 +16,11 @@ interface Snoozes {
   planSkippedFor: Day | null;
   shutdownSnoozedUntil: number;
   shutdownDismissedFor: Day | null;
+  /** Weekly prompts, each snoozed until a time or set aside for the rest of a day. */
+  weeklyPlanSnoozedUntil: number;
+  weeklyPlanSkippedFor: Day | null;
+  weeklyReviewSnoozedUntil: number;
+  weeklyReviewSkippedFor: Day | null;
 }
 
 /** "Later" and "Skip today" choices on the ritual prompts. Forgotten on reload, which simply asks again. */
@@ -24,6 +29,10 @@ export const useSnoozes = create<Snoozes>(() => ({
   planSkippedFor: null,
   shutdownSnoozedUntil: 0,
   shutdownDismissedFor: null,
+  weeklyPlanSnoozedUntil: 0,
+  weeklyPlanSkippedFor: null,
+  weeklyReviewSnoozedUntil: 0,
+  weeklyReviewSkippedFor: null,
 }));
 
 /** Where each daily ritual stands right now. Re-checked a few times a minute. */
@@ -54,6 +63,7 @@ const weekIndex = (weekday: number, weekStartsOn: 0 | 1) => (weekday - weekStart
 /** Where the weekly rituals stand: due from their set day and time until done. */
 export function useWeeklyStatus(): { plan: RitualState; review: RitualState } {
   const settings = useSettings();
+  const profile = useProfile();
   const today = useToday();
   useNow(60_000);
   const planWeek = planningWeek(today, settings.weekStartsOn);
@@ -72,16 +82,21 @@ export function useWeeklyStatus(): { plan: RitualState; review: RitualState } {
     ? null
     : planRecord.planStatus === 'done'
       ? 'done'
-      : // Only this week's plan can be overdue; next week's is not due yet.
-        planWeek === thisWeek && reached(settings.weeklyPlan)
+      : // Only this week's plan can be overdue; next week's is not due yet. A week that
+        // began before the app was set up is not asked for: planning starts next week.
+        planWeek === thisWeek && reached(settings.weeklyPlan) && profile.createdAt < fromDay(thisWeek).getTime()
         ? 'due'
         : null;
   const review: RitualState = !reviewRecord
     ? null
     : reviewRecord.reviewStatus === 'done'
       ? 'done'
-      : // Last week's review stays due until done; this week's becomes due at its set time.
-        reviewedWeek !== thisWeek || reached(settings.weeklyReview)
+      : reviewedWeek !== thisWeek
+        ? // Last week's review stays due until done, but only for a week the app was in use.
+          profile.createdAt < fromDay(shiftDay(reviewedWeek, 7)).getTime()
+          ? 'due'
+          : null
+        : reached(settings.weeklyReview)
         ? 'due'
         : null;
   return { plan, review };
