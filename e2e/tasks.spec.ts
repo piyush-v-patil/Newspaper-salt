@@ -22,7 +22,7 @@ test('the add window applies typing shortcuts as you type', async ({ page }) => 
   await expect(page.getByRole('option', { name: /45 min/ })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(title).toHaveValue('Draft report ');
-  await expect(page.getByRole('button', { name: 'Planned time' })).toHaveText('0:45');
+  await expect(page.getByRole('button', { name: 'Planned time', exact: true })).toHaveText('0:45');
 
   await page.keyboard.type('#wo');
   await page.keyboard.press('Enter');
@@ -96,7 +96,7 @@ test('the task page edits title, subtasks and notes, and they persist', async ({
 
   await dialog.getByRole('textbox', { name: 'Notes' }).click();
   await page.keyboard.type('Use the September figures.');
-  await dialog.getByRole('button', { name: 'Planned time' }).click();
+  await dialog.getByRole('button', { name: 'Planned time', exact: true }).click();
   // Wait for the picker itself; typing before it has focus would go nowhere.
   await page.getByPlaceholder('e.g. 45 or 1h30').fill('2h');
   await page.keyboard.press('Enter');
