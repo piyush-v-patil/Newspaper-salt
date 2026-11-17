@@ -1,6 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { undoLast } from '@/data/undo';
+import { takeBreak } from '@/features/focus/actions';
+import { activeTaskId } from '@/features/task/taskFocus';
 import { toggleDarkMode } from './theme';
 import { useUi, type RightPanelKind } from './uiStore';
 
@@ -64,6 +66,9 @@ export function useGlobalShortcuts(): void {
         ui.openAddTask();
         return;
       }
+      if (key === 'k') return void takeBreak();
+      // With a task under the cursor, F focuses that task (handled with the task shortcuts).
+      if (key === 'f' && activeTaskId() && !location.pathname.startsWith('/focus')) return;
       if (key in goTo) void navigate({ to: goTo[key as keyof typeof goTo] });
     }
 

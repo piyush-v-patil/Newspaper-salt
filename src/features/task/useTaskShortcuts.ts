@@ -1,10 +1,12 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useUi } from '@/app/uiStore';
 import { autoScheduleTask, clearSessions } from '@/data/commands/sessions';
 import { deleteTask, duplicateTask, moveTask, nudgeTask, setTaskCompleted, snoozeTask } from '@/data/commands/tasks';
-import { db } from '@/data/db';
+import { db, getSettings } from '@/data/db';
 import { BACKLOG } from '@/data/types';
 import { today } from '@/domain/clock';
+import { toggleTaskTimer } from '@/features/focus/actions';
 import { activeTaskId, useTaskFocus } from './taskFocus';
 import { useOpenTask } from './useOpenTask';
 
@@ -49,10 +51,13 @@ function moveSelection(key: string, shift: boolean): void {
 /** Shortcuts that act on the task under the cursor, or the one selected with the arrow keys. */
 export function useTaskShortcuts(): void {
   const openTask = useOpenTask();
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function onKeyDown(e: KeyboardEvent) {
       if (e.altKey || isTyping(e.target) || document.querySelector('[role="dialog"]')) return;
+      // Focus mode has one task and its own keys.
+      if (location.pathname.startsWith('/focus')) return;
       const mod = e.ctrlKey || e.metaKey;
       const focus = useTaskFocus.getState();
 
@@ -95,6 +100,16 @@ export function useTaskShortcuts(): void {
       }
 
       switch (e.key) {
+        case ' ':
+          // Space starts or pauses the timer; starting one enters focus mode unless that is turned off.
+          return act(async () => {
+            const started = await toggleTaskTimer(id);
+            if (started && (await getSettings()).focusOnTimerStart) await navigate({ to: '/focus/$taskId', params: { taskId: id } });
+          });
+        case 'f':
+          return act(() => navigate({ to: '/focus/$taskId', params: { taskId: id } }));
+        case 'e':
+          return act(() => focus.openAction(id, 'actual'));
         case 'c':
           return act(async () => {
             const task = await db.tasks.get(id);
@@ -134,5 +149,5 @@ export function useTaskShortcuts(): void {
     const listener = (e: KeyboardEvent) => void onKeyDown(e);
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, [openTask]);
+  }, [openTask, navigate]);
 }

@@ -3,14 +3,17 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { db } from '@/data/db';
 import { useSubtasks } from '@/data/queries';
 import type { Id, Session, Subtask, Task } from '@/data/types';
+import { actualByTask, type ActualTime } from '@/domain/time';
 
 interface TaskData {
   subtasks: Map<Id, Subtask[]>;
   /** Each task's calendar sessions, earliest first. */
   sessions: Map<Id, Session[]>;
+  /** Tracked time per task from finished entries. A running timer is added on top by whoever shows it. */
+  actual: Map<Id, ActualTime>;
 }
 
-const Ctx = createContext<TaskData>({ subtasks: new Map(), sessions: new Map() });
+const Ctx = createContext<TaskData>({ subtasks: new Map(), sessions: new Map(), actual: new Map() });
 
 /** Loads what task cards need (subtasks, sessions) once for every card on screen, rather than once per card. */
 export function TaskDataProvider({ tasks, children }: { tasks: Task[]; children: ReactNode }) {
@@ -30,7 +33,10 @@ export function TaskDataProvider({ tasks, children }: { tasks: Task[]; children:
     return grouped;
   }, [sessionRows]);
 
-  const value = useMemo(() => ({ subtasks, sessions }), [subtasks, sessions]);
+  const entryRows = useLiveQuery(() => (ids.length ? db.timeEntries.where('taskId').anyOf(ids).toArray() : []), [key]);
+  const actual = useMemo(() => actualByTask((entryRows ?? []).filter((e) => e.end !== null), 0), [entryRows]);
+
+  const value = useMemo(() => ({ subtasks, sessions, actual }), [subtasks, sessions, actual]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

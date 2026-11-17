@@ -16,12 +16,13 @@ import {
 import { useSubtasks, useTask } from '@/data/queries';
 import type { Task } from '@/data/types';
 import { CheckCircle } from '@/ui/CheckCircle';
+import { ActualChip } from './ActualChip';
 import { NotesEditor } from './NotesEditor';
 import { Subtasks } from './Subtasks';
 import { TaskChips } from './TaskChips';
 import { useOpenTask } from './useOpenTask';
 
-function TitleField({ task }: { task: Task }) {
+export function TitleField({ task, large = false }: { task: Task; large?: boolean }) {
   const [value, setValue] = useState(task.title);
   const area = useRef<HTMLTextAreaElement>(null);
 
@@ -52,7 +53,7 @@ function TitleField({ task }: { task: Task }) {
         }
       }}
       aria-label="Task title"
-      className={`min-w-0 flex-1 resize-none bg-transparent text-[19px] font-semibold leading-snug tracking-tight outline-none ${
+      className={`min-w-0 flex-1 resize-none bg-transparent font-semibold leading-snug tracking-tight outline-none ${large ? 'text-[26px]' : 'text-[19px]'} ${
         task.completedAt !== null ? 'text-ink-3 line-through' : ''
       }`}
     />
@@ -69,7 +70,8 @@ function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
   return (
     <>
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
-        <TaskChips
+        <div className="flex flex-wrap items-center gap-1.5">
+          <TaskChips
           day={task.day}
           plannedMin={task.plannedMin}
           channelId={task.channelId}
@@ -78,7 +80,9 @@ function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
           onPlanned={(m) => void setPlannedTime(task.id, m)}
           onChannel={(id) => void setChannel(task.id, id)}
           onPriority={(p) => void setDailyPriority(task.id, p)}
-        />
+          />
+          <ActualChip task={task} />
+        </div>
         <div className="flex shrink-0 items-center gap-0.5">
           <Menu.Root>
             <Menu.Trigger asChild>

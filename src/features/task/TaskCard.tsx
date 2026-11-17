@@ -3,9 +3,14 @@ import { CSS } from '@dnd-kit/utilities';
 import { Clock, Flag } from 'lucide-react';
 import { setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
-import type { DailyPriority, Task } from '@/data/types';
+import { useNow } from '@/app/useNow';
+import { setActualForDay } from '@/data/commands/timer';
+import { useRunningTimer } from '@/data/queries';
+import { BACKLOG, type DailyPriority, type Task } from '@/data/types';
+import { today } from '@/domain/clock';
+import { msToMinutes } from '@/domain/time';
 import { useChannelMap, useSettings } from '@/data/ReferenceData';
-import { formatClock, formatMinutes } from '@/domain/dates';
+import { formatClock, formatMinutes, toDay } from '@/domain/dates';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
 import { ChannelTag } from './ChannelTag';
@@ -21,6 +26,38 @@ const PRIORITY_COLOR: Record<DailyPriority, string> = {
   normal: '',
   low: 'text-ink-3',
 };
+
+/** Actual and planned time on a card: "0:42 / 1:30". Ticks while this task's timer runs. */
+function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) => void }) {
+  const { actual } = useTaskData();
+  const timer = useRunningTimer();
+  const running = timer?.taskId === task.id;
+  const nowMs = useNow(1000, running);
+  const tracked = actual.get(task.id);
+  // A card on a day shows that day's time; in the backlog, all of it.
+  const onDay = task.day === BACKLOG ? tracked?.totalMs : tracked?.byDay.get(task.day);
+  const runningOnThisDay = running && (task.day === BACKLOG || toDay(new Date(timer.start)) === task.day);
+  const actualMin = msToMinutes((onDay ?? 0) + (runningOnThisDay ? nowMs - timer.start : 0));
+  const hasActual = actualMin > 0 || running;
+  const empty = task.plannedMin === null && !hasActual;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      data-testid="card-time"
+      aria-label={task.plannedMin === null ? 'Set planned time' : `Planned time ${formatMinutes(task.plannedMin)}`}
+      className={`tabular -mr-1 flex h-5 shrink-0 items-center gap-1 rounded px-1 text-[12px] text-ink-3 hover:bg-hover hover:text-ink ${
+        empty ? 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100' : ''
+      }`}
+    >
+      {empty && <Clock size={13} />}
+      {hasActual && <span className={running ? 'font-medium text-accent' : 'text-ink-2'}>{formatMinutes(actualMin)}</span>}
+      {hasActual && <span>/</span>}
+      {!empty && <span>{task.plannedMin === null ? '–:––' : formatMinutes(task.plannedMin)}</span>}
+    </button>
+  );
+}
 
 /** What a task card shows. Used by the list and by the copy that follows the cursor while dragging. */
 export function TaskCardBody({ task }: { task: Task }) {
@@ -61,16 +98,7 @@ export function TaskCardBody({ task }: { task: Task }) {
             <Flag size={13} fill="currentColor" aria-label={PRIORITY_LABELS[task.dailyPriority]} />
           </span>
         )}
-        <button
-          type="button"
-          onClick={open('planned')}
-          aria-label={task.plannedMin === null ? 'Set planned time' : `Planned time ${formatMinutes(task.plannedMin)}`}
-          className={`tabular -mr-1 flex h-5 shrink-0 items-center rounded px-1 text-[12px] text-ink-3 hover:bg-hover hover:text-ink ${
-            task.plannedMin === null ? 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100' : ''
-          }`}
-        >
-          {task.plannedMin === null ? <Clock size={13} /> : formatMinutes(task.plannedMin)}
-        </button>
+        <CardTime task={task} onOpen={open('planned')} />
       </div>
 
       {items.length > 0 && (
@@ -120,6 +148,7 @@ export function TaskCardBody({ task }: { task: Task }) {
 }
 
 const ACTION_LABEL: Record<TaskActionKind, string> = {
+  actual: 'Actual time',
   planned: 'Planned time',
   channel: 'Channel',
   date: 'Move to',
@@ -129,6 +158,9 @@ const ACTION_LABEL: Record<TaskActionKind, string> = {
 function ActionPicker({ task, kind, onDone }: { task: Task; kind: TaskActionKind; onDone: () => void }) {
   const then = (work: Promise<void>) => void work.finally(onDone);
   switch (kind) {
+    case 'actual':
+      // Time is logged against the day the card is on (today, for the backlog).
+      return <TimePicker value={0} onPick={(m) => then(setActualForDay(task.id, task.day === BACKLOG ? today() : task.day, m))} clearLabel="No time tracked" />;
     case 'planned':
       return <TimePicker value={task.plannedMin} onPick={(m) => then(setPlannedTime(task.id, m))} />;
     case 'channel':

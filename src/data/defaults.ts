@@ -23,6 +23,8 @@ export const defaultSettings: Settings = {
   rescheduleOnConflict: true,
   rescheduleOnEarlyFinish: true,
   focusOnTimerStart: true,
+  breakReminders: { on: false, workMin: 25, breakMin: 5 },
+  timerSounds: true,
   archiveAfterDays: 4,
   celebrations: true,
 };

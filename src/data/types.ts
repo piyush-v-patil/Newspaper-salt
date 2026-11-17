@@ -183,7 +183,19 @@ export interface Settings {
   rescheduleOnConflict: boolean;
   rescheduleOnEarlyFinish: boolean;
   focusOnTimerStart: boolean;
+  /** Suggest a break after each stretch of work. */
+  breakReminders: { on: boolean; workMin: number; breakMin: number };
+  /** Play a chime when a timer reaches the task's planned time. */
+  timerSounds: boolean;
   /** Consecutive rollover days before a task is archived; null turns it off. */
   archiveAfterDays: number | null;
   celebrations: boolean;
+}
+
+/** The one timer that can run at a time. Kept on its own so it survives a reload. */
+export interface RunningTimer {
+  entryId: Id;
+  taskId: Id;
+  subtaskId: Id | null;
+  start: number;
 }

@@ -5,9 +5,16 @@ import { today } from '@/domain/clock';
 import { PickerPanel } from './PickerPanel';
 import { channelOptions, dateOptions, priorityOptions, timeOptions, type ChannelChoice } from './options';
 
-export function TimePicker({ value, onPick }: { value: number | null; onPick: (minutes: number | null) => void }) {
+interface TimePickerProps {
+  value: number | null;
+  onPick: (minutes: number | null) => void;
+  /** Wording for the option that clears the value. */
+  clearLabel?: string;
+}
+
+export function TimePicker({ value, onPick, clearLabel }: TimePickerProps) {
   return (
-    <PickerPanel label="Planned time" placeholder="e.g. 45 or 1h30" getOptions={(q) => timeOptions(q, value)} onSelect={onPick} />
+    <PickerPanel label="Time" placeholder="e.g. 45 or 1h30" getOptions={(q) => timeOptions(q, value, clearLabel)} onSelect={onPick} />
   );
 }
 

@@ -7,8 +7,8 @@ import type { TaskFilter } from '@/domain/filter';
 export type RightPanelKind = 'calendar' | 'objectives' | 'backlog' | 'archive' | 'search' | 'trash';
 
 export type CalendarSpan = 'day' | '3day' | 'week';
-/** What the workload counter totals: every task, or work tasks only. */
-export type WorkloadMode = 'all' | 'work';
+/** What the workload counter shows: every task, work tasks only, or actual against planned. */
+export type WorkloadMode = 'all' | 'work' | 'actual';
 
 interface UiState {
   leftOpen: boolean;
@@ -53,7 +53,8 @@ export const useUi = create<UiState>()(
       workloadMode: 'all',
       noRoomTaskId: null,
       setCalendarSpan: (calendarSpan) => set({ calendarSpan }),
-      cycleWorkloadMode: () => set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : 'all' })),
+      cycleWorkloadMode: () =>
+        set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : s.workloadMode === 'work' ? 'actual' : 'all' })),
       setNoRoomTask: (noRoomTaskId) => set({ noRoomTaskId }),
       toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
       toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),

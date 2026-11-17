@@ -14,7 +14,7 @@ export interface Option<T> {
   swatch?: string;
 }
 
-export function timeOptions(query: string, current: number | null): Option<number | null>[] {
+export function timeOptions(query: string, current: number | null, clearLabel = 'No estimate'): Option<number | null>[] {
   const q = query.trim();
   const typed = parseDuration(q);
   const minutes = q ? (typed !== null ? [typed] : DURATION_PRESETS.filter((m) => durationLabel(m).includes(q.toLowerCase()))) : DURATION_PRESETS;
@@ -24,7 +24,7 @@ export function timeOptions(query: string, current: number | null): Option<numbe
     value: m,
     hint: formatMinutes(m),
   }));
-  if (!q && current !== null) options.push({ key: 'none', label: 'No estimate', value: null });
+  if (!q && current !== null) options.push({ key: 'none', label: clearLabel, value: null });
   return options;
 }
 

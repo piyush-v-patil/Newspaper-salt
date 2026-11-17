@@ -19,7 +19,7 @@ import type {
 } from './types';
 
 interface MetaRow {
-  key: 'profile' | 'settings';
+  key: 'profile' | 'settings' | 'timer';
   value: unknown;
 }
 

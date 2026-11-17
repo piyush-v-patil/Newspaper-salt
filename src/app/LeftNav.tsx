@@ -105,8 +105,8 @@ function NavBody() {
  * Docked when open. When hidden, it slides back in while the cursor is at
  * the left edge of the window.
  */
-export function LeftNav() {
-  const open = useUi((s) => s.leftOpen);
+export function LeftNav({ hidden = false }: { hidden?: boolean }) {
+  const open = useUi((s) => s.leftOpen) && !hidden;
   const [peek, setPeek] = useState(false);
   const shown = open || peek;
 

@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
 import { db } from './db';
-import type { CalendarEvent, Id, Session, Subtask, Task, TaskDay } from './types';
+import type { CalendarEvent, Id, RunningTimer, Session, Subtask, Task, TaskDay, TimeEntry } from './types';
 
 const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.order, b.order);
 
@@ -69,4 +69,16 @@ export function useSchedule(days: Day[]): { sessions: ScheduledSession[]; events
     const events = await db.events.where('day').anyOf(days).toArray();
     return { sessions, events };
   }, [key]);
+}
+
+/** The timer that is running, or null. */
+export function useRunningTimer(): RunningTimer | null {
+  const row = useLiveQuery(() => db.meta.get('timer'), []);
+  return (row?.value as RunningTimer | undefined) ?? null;
+}
+
+/** Every time entry for one task, oldest first. */
+export function useTimeEntries(taskId: Id | undefined): TimeEntry[] {
+  const rows = useLiveQuery(() => (taskId ? db.timeEntries.where('taskId').equals(taskId).sortBy('start') : []), [taskId]);
+  return rows ?? [];
 }

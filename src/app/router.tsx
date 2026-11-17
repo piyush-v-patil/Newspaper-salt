@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/
 import { isDay, type Day } from '@/domain/dates';
 import { BoardPage } from '@/features/board/BoardPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
+import { FocusPage } from '@/features/focus/FocusPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -47,10 +48,14 @@ const calendarRoute = createRoute({
     return <CalendarPage date={date} />;
   },
 });
-const focusRoute = createRoute({
+const focusRoute = createRoute({ getParentRoute: parent, path: '/focus', component: () => <FocusPage /> });
+const focusTaskRoute = createRoute({
   getParentRoute: parent,
-  path: '/focus',
-  component: () => <ComingSoon title="Focus" phase={3} summary="One task, its subtasks and notes, and a running timer." />,
+  path: '/focus/$taskId',
+  component: function FocusTask() {
+    const { taskId } = focusTaskRoute.useParams();
+    return <FocusPage taskId={taskId} />;
+  },
 });
 const planRoute = createRoute({
   getParentRoute: parent,
@@ -95,6 +100,7 @@ const routeTree = rootRoute.addChildren([
   boardRoute,
   calendarRoute,
   focusRoute,
+  focusTaskRoute,
   planRoute,
   shutdownRoute,
   highlightsRoute,

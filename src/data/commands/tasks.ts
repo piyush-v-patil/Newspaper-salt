@@ -6,6 +6,7 @@ import { command, db, getSettings } from '../db';
 import { BACKLOG, type DailyPriority, type Id, type ListEdge, type Task, type TaskDay } from '../types';
 import { recordUndo } from '../undo';
 import { withSnapshot } from './snapshot';
+import { getRunningTimer, stopRunningTimer } from './timer';
 
 export interface NewTask {
   title: string;
@@ -100,6 +101,8 @@ export const setTaskCompleted = command(async (id: Id, completed: boolean): Prom
   const settings = await getSettings();
   await withSnapshot('Complete task', { taskIds: [id], days: [day] }, async () => {
     await db.tasks.update(id, { completedAt: now(), completedDay: day, lastActivityDay: day, updatedAt: now() });
+    // Finishing a task stops its timer.
+    if ((await getRunningTimer())?.taskId === id) await stopRunningTimer();
 
     const time = nowMinutes();
     const onDay = await db.sessions.where('day').equals(day).toArray();
