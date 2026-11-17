@@ -43,7 +43,6 @@ export function CalendarPage({ date }: { date?: Day }) {
 
   const go = (next: Day) => void navigate({ to: '/calendar', search: next === current ? {} : { date: next } });
   const step = (direction: number) => go(span === 'month' ? toDay(addMonths(fromDay(anchor), direction)) : shiftDay(anchor, direction * length));
-  const inView = span === 'month' ? anchor.slice(0, 7) === current.slice(0, 7) : days.includes(current);
   useDayKeys({ previous: () => step(-1), next: () => step(1), today: () => go(current) });
 
   return (
@@ -52,7 +51,8 @@ export function CalendarPage({ date }: { date?: Day }) {
         title={monthLabel(span === 'month' ? anchor : days[0])}
         onPrevious={() => step(-1)}
         onNext={() => step(1)}
-        onBackToToday={inView ? undefined : () => go(current)}
+        onToday={() => go(current)}
+        stepLabel={span === 'month' ? 'month' : span === 'week' ? 'week' : 'day'}
       >
         <div role="group" aria-label="Calendar range" className="flex h-7 items-center rounded-md border border-line p-0.5">
           {SPANS.map((s) => (

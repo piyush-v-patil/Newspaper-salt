@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, addTasks } from './fixtures';
 
 const card = (page: Page, title: string) => page.getByTestId('task').filter({ hasText: title });
 
@@ -8,10 +8,7 @@ test('a task can be made to repeat, edited across the series, and stopped', asyn
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
 
-  const row = page.getByLabel(/^Add task to \d/);
-  await row.fill('Stand-up notes ~15');
-  await row.press('Enter');
-  await row.press('Escape');
+  await addTasks(page, 'Stand-up notes ~15');
 
   await card(page, 'Stand-up notes').click();
   const taskPage = page.getByRole('dialog').first();
@@ -42,10 +39,14 @@ test('a task can be made to repeat, edited across the series, and stopped', asyn
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.keyboard.press('Shift+Space');
+  // Thursday's copy is renamed too; wait until today's list is the one showing.
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.getByTestId('task')).toHaveCount(1);
   await expect(card(page, 'Daily notes')).toBeVisible();
 
   // Stop the series: today's stays, Thursday's goes.
-  await card(page, 'Daily notes').click();
+  await card(page, 'Daily notes').getByText('Daily notes').click();
+  await expect(page.getByRole('dialog').first().getByLabel('Task title')).toHaveValue('Daily notes');
   await page.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Repeating…' }).click();
   await page.getByRole('button', { name: /^Stop repeating/ }).click();

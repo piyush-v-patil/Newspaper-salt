@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, test, addTasks } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -10,11 +10,7 @@ test.beforeEach(async ({ page }) => {
 const addRow = (page: import('@playwright/test').Page) => page.getByLabel(/^Add task to/).first();
 
 test('a task survives a reload, can be completed, deleted and restored', async ({ page }) => {
-  await addRow(page).click();
-  await page.keyboard.type('Draft Q4 report');
-  await page.keyboard.press('Enter');
-  await page.keyboard.type('Review designs');
-  await page.keyboard.press('Enter');
+  await addTasks(page, 'Draft Q4 report', 'Review designs');
   await expect(page.getByTestId('task')).toHaveText(['Review designs', 'Draft Q4 report']);
 
   await page.reload();
@@ -39,17 +35,16 @@ test('single keys switch views and Ctrl+Z undoes', async ({ page }) => {
   await page.keyboard.press('t');
   await expect(page).toHaveURL(/\/today$/);
 
-  await addRow(page).fill('Temporary');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Escape');
+  await addTasks(page, 'Temporary');
   await expect(page.getByTestId('task')).toHaveCount(1);
   await page.keyboard.press('Control+z');
   await expect(page.getByTestId('task')).toHaveCount(0);
 });
 
 test('typing in a field does not trigger shortcuts', async ({ page }) => {
-  await addRow(page).fill('th');
-  await addRow(page).press('h');
+  await addRow(page).click();
+  await page.getByLabel('Task title').fill('th');
+  await page.getByLabel('Task title').press('h');
   await expect(page).toHaveURL(/\/today$/);
 });
 
@@ -59,7 +54,7 @@ test('day navigation moves a day at a time and returns to today', async ({ page 
   await page.keyboard.press('Shift+ArrowRight');
   await expect(page).toHaveURL(/date=\d{4}-\d{2}-\d{2}/);
   await expect(title).not.toHaveText(todayLabel!);
-  await page.getByRole('button', { name: 'Back to today' }).click();
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
   await expect(title).toHaveText(todayLabel!);
   await expect(page).toHaveURL(/\/today$/);
 });

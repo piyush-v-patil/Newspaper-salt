@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, Flag, Repeat, Target } from 'lucide-react';
+import { Clock, Repeat, Target } from 'lucide-react';
 import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
@@ -17,25 +17,25 @@ import { useChannelMap, useSettings } from '@/data/ReferenceData';
 import { formatClock, formatMinutes, toDay } from '@/domain/dates';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
-import { ChannelTag } from './ChannelTag';
 import { useTaskData } from './TaskData';
 import { BacklogPriorityPicker, ChannelPicker, DatePicker, ObjectivePicker, PriorityPicker, TimePicker } from './pickers/pickers';
 import { PRIORITY_LABELS } from './pickers/options';
 import { useTaskFocus, type TaskActionKind } from './taskFocus';
 import { useOpenTask } from './useOpenTask';
 
-const PRIORITY_COLOR: Record<DailyPriority, string> = {
-  urgent: 'text-over',
-  priority: 'text-warn',
+/** Priority shows as a soft coloured pill with its name. */
+const PRIORITY_PILL: Record<DailyPriority, string> = {
+  urgent: 'bg-over/12 text-over',
+  priority: 'bg-[#8a5bd0]/14 text-[#7a4cc0] dark:text-[#b897ef]',
   normal: '',
-  low: 'text-ink-3',
+  low: 'bg-hover text-ink-3',
 };
 
-const BACKLOG_PRIORITY_COLOR: Record<BacklogPriority, string> = {
-  urgent: 'text-over',
-  high: 'text-warn',
-  medium: 'text-accent',
-  low: 'text-ink-3',
+const BACKLOG_PRIORITY_PILL: Record<BacklogPriority, string> = {
+  urgent: 'bg-over/12 text-over',
+  high: 'bg-warn/15 text-warn',
+  medium: 'bg-accent-soft text-accent',
+  low: 'bg-hover text-ink-3',
   none: '',
 };
 
@@ -50,7 +50,7 @@ function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) 
   const onDay = task.day === BACKLOG ? tracked?.totalMs : tracked?.byDay.get(task.day);
   const runningOnThisDay = running && (task.day === BACKLOG || toDay(new Date(timer.start)) === task.day);
   const actualMin = msToMinutes((onDay ?? 0) + (runningOnThisDay ? nowMs - timer.start : 0));
-  const hasActual = actualMin > 0 || running;
+  const hasActual = actualMin > 0 || running || task.plannedMin !== null;
   const empty = task.plannedMin === null && !hasActual;
 
   return (
@@ -59,13 +59,13 @@ function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) 
       onClick={onOpen}
       data-testid="card-time"
       aria-label={task.plannedMin === null ? 'Set planned time' : `Planned time ${formatMinutes(task.plannedMin)}`}
-      className={`tabular -mr-1 flex h-5 shrink-0 items-center gap-1 rounded px-1 text-[12px] text-ink-3 hover:bg-hover hover:text-ink ${
-        empty ? 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100' : ''
+      className={`tabular flex h-5 shrink-0 items-center gap-1 rounded px-1.5 text-[11.5px] text-ink-2 hover:text-ink ${
+        empty ? 'opacity-0 hover:bg-hover focus-visible:opacity-100 group-hover:opacity-100' : 'bg-hover'
       }`}
     >
       {empty && <Clock size={13} />}
-      {hasActual && <span className={running ? 'font-medium text-accent' : 'text-ink-2'}>{formatMinutes(actualMin)}</span>}
-      {hasActual && <span>/</span>}
+      {hasActual && <span className={running ? 'font-medium text-accent' : ''}>{formatMinutes(actualMin)}</span>}
+      {hasActual && <span className="text-ink-3">/</span>}
       {!empty && <span>{task.plannedMin === null ? '–:––' : formatMinutes(task.plannedMin)}</span>}
     </button>
   );
@@ -86,10 +86,10 @@ export function TaskCardBody({ task }: { task: Task }) {
   const flag =
     task.day === BACKLOG
       ? task.backlogPriority !== 'none'
-        ? { color: BACKLOG_PRIORITY_COLOR[task.backlogPriority], label: BACKLOG_PRIORITIES.find((p) => p.id === task.backlogPriority)!.label }
+        ? { pill: BACKLOG_PRIORITY_PILL[task.backlogPriority], label: BACKLOG_PRIORITIES.find((p) => p.id === task.backlogPriority)!.label }
         : null
       : task.dailyPriority !== 'normal'
-        ? { color: PRIORITY_COLOR[task.dailyPriority], label: PRIORITY_LABELS[task.dailyPriority] }
+        ? { pill: PRIORITY_PILL[task.dailyPriority], label: PRIORITY_LABELS[task.dailyPriority] }
         : null;
 
   const open = (kind: TaskActionKind) => (e: React.MouseEvent) => {
@@ -97,33 +97,26 @@ export function TaskCardBody({ task }: { task: Task }) {
     openAction(task.id, kind);
   };
 
+  const markers = scheduled || task.seriesId || task.objectiveId || task.rolloverDays > 0;
+
   return (
     <>
-      <div className="flex items-start gap-2.5">
-        <span className="pt-px">
-          <CheckCircle
-            checked={done}
-            onChange={(next) => void setTaskCompleted(task.id, next)}
-            label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
-          />
-        </span>
-        <span
-          className={`min-w-0 flex-1 break-words text-[14.5px] leading-snug transition-colors duration-200 ${
-            done ? 'text-ink-3 line-through' : 'text-ink'
-          }`}
-        >
-          {task.title}
-        </span>
-        {flag && (
-          <span className={`pt-0.5 ${flag.color}`} title={flag.label}>
-            <Flag size={13} fill="currentColor" aria-label={flag.label} />
+      {/* Top: when it is on the calendar, and actual against planned time. */}
+      <div className="flex min-h-5 items-center justify-between gap-2">
+        {scheduled ? (
+          <span className="tabular text-[11.5px] text-ink-2" title="Scheduled on the calendar">
+            {formatClock(scheduled.startMin, timeFormat).toLowerCase()}
           </span>
+        ) : (
+          <span />
         )}
         <CardTime task={task} onOpen={open('planned')} />
       </div>
 
+      <p className={`mt-1 break-words text-[14.5px] leading-snug transition-colors duration-200 ${done ? 'text-ink-3 line-through' : 'text-ink'}`}>{task.title}</p>
+
       {items.length > 0 && (
-        <ul className="ml-[28px] mt-1.5 flex flex-col gap-1">
+        <ul className="mt-1.5 flex flex-col gap-1">
           {items.map((s) => (
             <li key={s.id} className="flex items-center gap-2">
               <CheckCircle
@@ -132,53 +125,59 @@ export function TaskCardBody({ task }: { task: Task }) {
                 onChange={(next) => void setSubtaskCompleted(s.id, next)}
                 label={s.completedAt !== null ? `Reopen ${s.title}` : `Complete ${s.title}`}
               />
-              <span className={`min-w-0 flex-1 truncate text-[13px] ${s.completedAt !== null ? 'text-ink-3 line-through' : 'text-ink-2'}`}>
-                {s.title}
-              </span>
+              <span className={`min-w-0 flex-1 truncate text-[13px] ${s.completedAt !== null ? 'text-ink-3 line-through' : 'text-ink-2'}`}>{s.title}</span>
             </li>
           ))}
         </ul>
       )}
 
-      {(channel || scheduled || task.rolloverDays > 0 || task.objectiveId || task.seriesId) && (
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5">
-            {scheduled && (
-              <span className="tabular text-[12px] font-medium text-accent" title="Scheduled on the calendar">
-                {formatClock(scheduled.startMin, timeFormat)}
-              </span>
-            )}
-            {task.seriesId && (
-              <span className="text-ink-3" title="Repeats">
-                <Repeat size={12} aria-label="Repeats" />
-              </span>
-            )}
-            {task.objectiveId && (
-              <button
-                type="button"
-                onClick={open('objective')}
-                title="Linked to a weekly objective"
-                className="flex items-center gap-1 rounded text-[11.5px] font-medium text-ink-2 hover:text-ink"
-              >
-                <Target size={11} /> This week
-              </button>
-            )}
-            {task.rolloverDays > 0 && (
-              <span
-                className="tabular grid h-[18px] min-w-[18px] place-items-center rounded-full bg-hover px-1 text-[11px] font-medium text-ink-2"
-                title={`Rolled over ${task.rolloverDays} ${task.rolloverDays === 1 ? 'day' : 'days'} in a row`}
-              >
-                {task.rolloverDays}
-              </span>
-            )}
-          </span>
-          {channel && (
-            <button type="button" onClick={open('channel')} aria-label={`Channel ${channel.name}`} className="min-w-0 rounded">
-              <ChannelTag channel={channel} />
+      {/* Bottom: complete, then what kind of task it is; the channel on the right. */}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <CheckCircle checked={done} onChange={(next) => void setTaskCompleted(task.id, next)} label={done ? `Reopen ${task.title}` : `Complete ${task.title}`} />
+          {flag && (
+            <button
+              type="button"
+              onClick={open('priority')}
+              aria-label={flag.label}
+              title="Priority"
+              className={`rounded px-1.5 py-px text-[11px] font-medium ${flag.pill}`}
+            >
+              {flag.label}
             </button>
           )}
-        </div>
-      )}
+          {markers && (
+            <>
+              {task.seriesId && (
+                <span className="text-ink-3" title="Repeats">
+                  <Repeat size={12} aria-label="Repeats" />
+                </span>
+              )}
+              {task.objectiveId && (
+                <button type="button" onClick={open('objective')} title="Linked to a weekly objective" className="flex items-center gap-1 rounded text-[11px] font-medium text-ink-2 hover:text-ink">
+                  <Target size={11} /> This week
+                </button>
+              )}
+              {task.rolloverDays > 0 && (
+                <span
+                  className="tabular grid h-[18px] min-w-[18px] place-items-center rounded-full bg-hover px-1 text-[11px] font-medium text-ink-2"
+                  title={`Rolled over ${task.rolloverDays} ${task.rolloverDays === 1 ? 'day' : 'days'} in a row`}
+                >
+                  {task.rolloverDays}
+                </span>
+              )}
+            </>
+          )}
+        </span>
+        {channel && (
+          <button type="button" onClick={open('channel')} aria-label={`Channel ${channel.name}`} className="flex min-w-0 items-center gap-0.5 rounded text-[12.5px] text-ink-2 hover:text-ink">
+            <span className="font-semibold" style={{ color: channel.color }}>
+              #
+            </span>
+            <span className="truncate">{channel.name}</span>
+          </button>
+        )}
+      </div>
     </>
   );
 }

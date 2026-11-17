@@ -1,40 +1,33 @@
 import { Plus } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
-import type { Id, TaskDay } from '@/data/types';
-import { createFromText } from './createFromText';
+import { useUi } from '@/app/uiStore';
+import type { Id, Task, TaskDay } from '@/data/types';
+import { formatMinutes } from '@/domain/dates';
 
-/** Inline add at the top of a list. Stays focused after Enter so several tasks can be typed in a row. */
-export function AddTaskRow({ day, folderId, placeholder = 'Add task' }: { day: TaskDay; folderId?: Id | null; placeholder?: string }) {
-  const [title, setTitle] = useState('');
+interface Props {
+  day: TaskDay;
+  /** The list's tasks, for the planned-total badge. */
+  tasks?: Task[];
+  /** Backlog only: new tasks go into this folder. */
+  folderId?: Id | null;
+  placeholder?: string;
+}
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const submitted = title;
-    if (!submitted.trim()) return;
-    // Clear before saving, so typing the next task straight away never mixes with this one.
-    setTitle('');
-    try {
-      await createFromText(submitted, { day, folderId });
-    } catch {
-      setTitle((current) => current || submitted);
-    }
-  }
-
+/** "+ Add task" at the top of a list. Opens the add-task card over this row. */
+export function AddTaskRow({ day, tasks, folderId, placeholder = 'Add task' }: Props) {
+  const total = (tasks ?? []).filter((t) => t.kind === 'task').reduce((sum, t) => sum + (t.plannedMin ?? 0), 0);
   return (
-    <form
-      onSubmit={(e) => void submit(e)}
-      className="flex items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-3 py-2 text-ink-3 focus-within:border-accent focus-within:text-ink"
+    <button
+      type="button"
+      aria-label={`Add task to ${day}`}
+      onClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        useUi.getState().openAddTask(day, { top: rect.top, left: rect.left }, folderId ?? null);
+      }}
+      className="flex w-full items-center gap-2.5 rounded-lg bg-surface px-3 py-2 text-left text-ink-3 shadow-card transition-colors hover:text-ink-2"
     >
       <Plus size={15} />
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
-        placeholder={placeholder}
-        aria-label={`Add task to ${day}`}
-        autoComplete="off"
-        className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-3"
-      />
-    </form>
+      <span className="flex-1 text-[14px]">{placeholder}</span>
+      {total > 0 && <span className="tabular rounded bg-hover px-1.5 py-0.5 text-[11.5px] font-medium text-ink-2">{formatMinutes(total)}</span>}
+    </button>
   );
 }

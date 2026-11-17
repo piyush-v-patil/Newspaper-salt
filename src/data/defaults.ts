@@ -5,7 +5,7 @@ const workday: DaySchedule = { available: true, startMin: 9 * 60, endMin: 17 * 6
 /** Values a new profile starts with. They match the defaults in PLAN.md section 6. */
 export const defaultSettings: Settings = {
   darkMode: 'system',
-  timeFormat: '24h',
+  timeFormat: '12h',
   weekStartsOn: 1,
   defaultView: 'today',
   newTaskPosition: 'top',

@@ -13,6 +13,7 @@ interface Extras {
   position?: ListEdge;
   bucket?: BacklogBucket;
   folderId?: Id | null;
+  objectiveId?: Id | null;
 }
 
 /**
@@ -42,5 +43,6 @@ export async function createFromText(text: string, extras: Extras): Promise<Task
     position: extras.position,
     backlogBucket: extras.bucket,
     backlogFolderId: extras.folderId,
+    objectiveId: extras.objectiveId,
   });
 }

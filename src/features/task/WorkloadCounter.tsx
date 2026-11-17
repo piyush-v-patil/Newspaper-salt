@@ -9,7 +9,7 @@ import { dayWorkload, workloadLevel } from '@/domain/workload';
 import { useTaskData } from './TaskData';
 
 const TEXT = { ok: 'text-ink-3', near: 'text-warn', over: 'text-over' };
-const FILL = { ok: 'bg-done', near: 'bg-warn', over: 'bg-over' };
+const FILL = { ok: 'bg-ink-3', near: 'bg-warn', over: 'bg-over' };
 
 /**
  * Planned time for a day against the workload threshold. Only work tasks
@@ -59,10 +59,11 @@ export function WorkloadCounter({ day, tasks }: { day: Day; tasks: Task[] }) {
       title={`${formatMinutes(workload.workPlanned)} of work planned against a ${formatMinutes(threshold)} threshold. Click to switch between all tasks, work only, and actual against planned.`}
       className="flex w-full flex-col gap-1 rounded text-left"
     >
-      <span className={`tabular h-4 text-[12px] ${TEXT[level]}`}>{label}</span>
-      <span className="h-[3px] w-full overflow-hidden rounded-full bg-hover">
+      <span className="h-[6px] w-full overflow-hidden rounded-full bg-line">
         <span className={`block h-full rounded-full transition-[width,background-color] duration-300 ${FILL[level]}`} style={{ width: `${percent}%` }} />
       </span>
+      {/* The bar says enough until the day gets full, or another view is chosen. */}
+      <span className={`tabular text-[12px] ${TEXT[level]} ${level === 'ok' && mode === 'all' ? 'sr-only' : ''}`}>{label}</span>
     </button>
   );
 }

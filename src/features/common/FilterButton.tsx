@@ -29,8 +29,8 @@ export function FilterButton() {
         <Menu.Trigger asChild>
           <button
             type="button"
-            className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12.5px] hover:bg-hover ${
-              filter ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-2'
+            className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-[12.5px] hover:bg-hover ${
+              filter ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface text-ink-2'
             }`}
           >
             <ListFilter size={13} />

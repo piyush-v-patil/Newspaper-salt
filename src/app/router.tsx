@@ -89,7 +89,15 @@ const shutdownRoute = createRoute({ getParentRoute: parent, path: '/shutdown', c
 const highlightsRoute = createRoute({ getParentRoute: parent, path: '/highlights', component: HighlightsPage });
 const weeklyPlanRoute = createRoute({ getParentRoute: parent, path: '/weekly/plan', component: WeeklyPlanPage });
 const weeklyReviewRoute = createRoute({ getParentRoute: parent, path: '/weekly/review', component: WeeklyReviewPage });
-const backlogRoute = createRoute({ getParentRoute: parent, path: '/backlog', component: BacklogPage });
+const backlogRoute = createRoute({
+  getParentRoute: parent,
+  path: '/backlog',
+  validateSearch: (search: Record<string, unknown>): { folder?: string } => (typeof search.folder === 'string' ? { folder: search.folder } : {}),
+  component: function Backlog() {
+    const { folder } = backlogRoute.useSearch();
+    return <BacklogPage key={folder ?? 'all'} folder={folder} />;
+  },
+});
 const settingsRoute = createRoute({
   getParentRoute: parent,
   path: '/settings',

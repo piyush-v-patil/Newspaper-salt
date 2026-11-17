@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, test, addTasksVia } from './fixtures';
 
 test.use({ freshStart: true });
 
@@ -36,7 +36,7 @@ test('first run: setup screens lead into a guided first plan, then the workspace
   await expect(page.getByRole('heading', { name: 'When do you plan your day?' })).toBeVisible();
   await page.getByLabel('Planning time').fill('08:00');
   await expect(page.getByText('Morning planning: you will plan the same day.')).toBeVisible();
-  await expect(page.getByText('Your day ends at 17:30.')).toBeVisible();
+  await expect(page.getByText('Your day ends at 5:30 PM.')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'Let’s plan your first day, Piyush' })).toBeVisible();
@@ -45,10 +45,7 @@ test('first run: setup screens lead into a guided first plan, then the workspace
   // The first plan is coached.
   await expect(page).toHaveURL(/\/plan\?date=2026-11-17$/);
   await expect(page.getByTestId('coach')).toBeVisible();
-  const add = page.getByLabel('Add task to 2026-11-17');
-  await add.fill('Write the brief ~1h #deep-work');
-  await add.press('Enter');
-  await add.press('Escape');
+  await addTasksVia(page, page.getByLabel('Add task to 2026-11-17'), 'Write the brief ~1h #deep-work');
   await expect(page.getByTestId('task').filter({ hasText: 'Write the brief' })).toContainText('#deep-work');
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Next' }).click();

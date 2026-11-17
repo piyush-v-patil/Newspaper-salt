@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, addTasks } from './fixtures';
 
 const HOUR_PX = 52;
 
@@ -13,14 +13,7 @@ async function openAt(page: Page, time: string) {
 const card = (page: Page, title: string) => page.getByTestId('task').filter({ hasText: title });
 const sessions = (page: Page) => page.getByTestId('session');
 
-async function quickAdd(page: Page, ...titles: string[]) {
-  const row = page.getByLabel(/^Add task to/).first();
-  for (const title of titles) {
-    await row.fill(title);
-    await row.press('Enter');
-  }
-  await row.press('Escape');
-}
+const quickAdd = addTasks;
 
 /** Screen position of a time of day in the first calendar column. */
 async function pointAt(page: Page, hours: number, minutes = 0) {
@@ -219,9 +212,9 @@ test('the month range shows each day’s items and opens a day on click', async 
   const friday = page.locator('[data-month-day="2026-11-20"]');
   await expect(friday).toContainText('Prep workshop');
 
-  await page.getByRole('button', { name: 'Next day' }).click();
+  await page.getByRole('button', { name: 'Next month' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('December 2026');
-  await page.getByRole('button', { name: 'Back to today' }).click();
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
   await friday.click();
   await expect(page.locator('[data-cal-day]')).toHaveCount(1);
   await expect(page.locator('[data-cal-day="2026-11-20"]')).toHaveCount(1);
@@ -239,10 +232,7 @@ test('an event can repeat, and auto-scheduling works around every occurrence', a
   // Tomorrow has it too, and a task scheduled there goes around it.
   await page.keyboard.press('Shift+ArrowRight');
   await expect(page.getByTestId('event')).toHaveAccessibleName('Standup, 09:00 – 10:00');
-  const row = page.getByLabel(/^Add task to \d/);
-  await row.fill('Deep work ~1h');
-  await row.press('Enter');
-  await row.press('Escape');
+  await quickAdd(page, 'Deep work ~1h');
   await card(page, 'Deep work').hover();
   await page.keyboard.press('x');
   await expect(page.getByTestId('session')).toHaveAccessibleName('Deep work, 10:00 – 11:00');

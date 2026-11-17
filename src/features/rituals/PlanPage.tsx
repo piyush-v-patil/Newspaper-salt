@@ -188,11 +188,11 @@ export function PlanPage({ date }: { date?: Day }) {
                       {coached && <Coach text={COACHING.add} />}
           </Guidance>
           <Column title={relativeDayLabel(day, current)} hint={<WorkloadHint tasks={tasks} />} width={380}>
-            <AddTaskRow day={day} />
+            <AddTaskRow day={day} tasks={tasks} />
             <TaskList listId={day} tasks={tasks} className="min-h-40" />
           </Column>
           <Column title="Backlog" hint="Drag across" width={320}>
-            <AddTaskRow day={BACKLOG} />
+            <AddTaskRow day={BACKLOG} tasks={ordered[BACKLOG]} />
             <TaskList listId={BACKLOG} tasks={ordered[BACKLOG] ?? []} className="min-h-40" />
           </Column>
         </>

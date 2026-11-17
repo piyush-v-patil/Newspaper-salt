@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, setProfile, setSettings, test } from './fixtures';
+import { expect, setProfile, setSettings, test, addTasks } from './fixtures';
 
 async function openAt(page: Page, dateTime: string) {
   await page.clock.install({ time: new Date(dateTime) });
@@ -9,14 +9,7 @@ async function openAt(page: Page, dateTime: string) {
 
 const card = (page: Page, title: string) => page.getByTestId('task').filter({ hasText: title });
 
-async function quickAdd(page: Page, ...titles: string[]) {
-  const row = page.getByLabel(/^Add task to \d/);
-  for (const title of titles) {
-    await row.fill(title);
-    await row.press('Enter');
-  }
-  await row.press('Escape');
-}
+const quickAdd = addTasks;
 
 async function openSection(page: Page, name: string) {
   await page.goto('/settings');

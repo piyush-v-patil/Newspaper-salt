@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, addTasks, addTasksVia } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -9,15 +9,12 @@ test.beforeEach(async ({ page }) => {
 const card = (page: Page, title: string) => page.getByTestId('task').filter({ hasText: title });
 
 test('the backlog groups tasks by time bucket, with folders and its own priority', async ({ page }) => {
+  // Tall enough to see every bucket at once, so a card can be dragged between them.
+  await page.setViewportSize({ width: 1280, height: 1000 });
   await page.keyboard.press('b');
   await expect(page).toHaveURL(/\/backlog$/);
 
-  const add = page.getByLabel('Add task to backlog');
-  await add.fill('Renew passport');
-  await add.press('Enter');
-  await add.fill('Learn to sail');
-  await add.press('Enter');
-  await add.press('Escape');
+  await addTasksVia(page, page.getByLabel('Add task to backlog'), 'Renew passport', 'Learn to sail');
   const someday = page.getByRole('region', { name: 'Someday' });
   await expect(someday.getByTestId('task')).toHaveCount(2);
 
@@ -51,8 +48,7 @@ test('the backlog groups tasks by time bucket, with folders and its own priority
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: 'Boat', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('task')).toHaveCount(0);
-  await page.getByLabel('Add task to backlog').fill('Compare marinas');
-  await page.getByLabel('Add task to backlog').press('Enter');
+  await addTasksVia(page, page.getByLabel('Add task to backlog'), 'Compare marinas');
   await expect(page.getByTestId('task')).toHaveText([/Compare marinas/]);
   await page.getByRole('button', { name: 'All', exact: true }).click();
   await expect(page.getByTestId('task')).toHaveCount(3);
@@ -62,10 +58,7 @@ test('the backlog groups tasks by time bucket, with folders and its own priority
 });
 
 test('the backlog panel sits beside the day, and tasks move both ways', async ({ page }) => {
-  const row = page.getByLabel(/^Add task to \d/);
-  await row.fill('Not today after all');
-  await row.press('Enter');
-  await row.press('Escape');
+  await addTasks(page, 'Not today after all');
 
   await page.keyboard.press('Shift+B');
   const panel = page.getByRole('complementary', { name: 'Backlog' });

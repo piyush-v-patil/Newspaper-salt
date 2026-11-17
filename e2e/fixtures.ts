@@ -1,4 +1,4 @@
-import { expect, test as base, type Page } from '@playwright/test';
+import { expect, test as base, type Locator, type Page } from '@playwright/test';
 
 /** Reads, changes and writes one row of the app's settings store from inside the page. */
 async function patchMeta(page: Page, key: 'profile' | 'settings', patch: Record<string, unknown>) {
@@ -47,6 +47,8 @@ export const test = base.extend<{ freshStart: boolean }>({
       await expect(page).toHaveURL(/\/welcome$/);
       await patchMeta(page, 'profile', { name: 'Pi', onboardingCompletedAt: 1, guidedPlansRemaining: 0, setupStep: 4 });
       await patchMeta(page, 'settings', {
+        // Tests read times in 24-hour form; the app's own default is 12-hour.
+        timeFormat: '24h',
         autoPlanning: false,
         autoShutdown: false,
         weeklyPlan: { weekday: 1, min: 8 * 60, auto: false },
@@ -58,3 +60,28 @@ export const test = base.extend<{ freshStart: boolean }>({
 });
 
 export { expect };
+
+/**
+ * Adds tasks the way a person does: click an "Add task" row, type, press
+ * Enter. When the text ends in a typing shortcut such as ~30 or #work, its
+ * menu is open and the first Enter picks from it; the next one adds the task.
+ */
+export async function addTasksVia(page: Page, row: Locator, ...titles: string[]) {
+  for (const title of titles) {
+    await row.click();
+    const input = page.getByLabel('Task title');
+    await expect(input).toBeFocused();
+    await input.fill(title);
+    for (let i = 0; i < 4; i++) {
+      const menuOpen = (await page.getByRole('listbox').count()) > 0;
+      await input.press('Enter');
+      if (!menuOpen) break;
+    }
+    await expect(page.getByLabel('Task title')).toHaveCount(0);
+  }
+}
+
+/** Adds tasks from the first "Add task" row on the page. */
+export async function addTasks(page: Page, ...titles: string[]) {
+  await addTasksVia(page, page.getByLabel(/^Add task to/).first(), ...titles);
+}

@@ -6,12 +6,13 @@
  * calibration pass (Phase 7) is a change to this file only.
  */
 :root {
-  --canvas: #ffffff;
-  --panel: #f6f6f8;
+  /* A soft grey workspace with white cards on it; the navigation a shade darker. */
+  --canvas: #f7f7f8;
+  --panel: #efeff1;
   --surface: #ffffff;
-  --hover: #eeeef2;
-  --line: #e7e7ec;
-  --line-strong: #d3d3db;
+  --hover: #ebebee;
+  --line: #e6e6ea;
+  --line-strong: #d1d1d8;
   --ink: #1b1c22;
   --ink-2: #5c5e6b;
   --ink-3: #9a9ca9;
@@ -21,15 +22,15 @@
   --done-soft: #e2f4ea;
   --warn: #c98a12;
   --over: #d24c48;
-  --sh-card: 0 1px 2px rgb(20 21 30 / 0.05), 0 1px 1px rgb(20 21 30 / 0.03);
+  --sh-card: 0 1px 3px rgb(20 21 30 / 0.08), 0 0 0 1px rgb(20 21 30 / 0.03);
   --sh-pop: 0 8px 28px rgb(20 21 30 / 0.14), 0 2px 6px rgb(20 21 30 / 0.08);
   color-scheme: light;
 }
 
 [data-theme='dark'] {
-  --canvas: #17181d;
-  --panel: #111216;
-  --surface: #1f2027;
+  --canvas: #18191e;
+  --panel: #121317;
+  --surface: #22232a;
   --hover: #272830;
   --line: #2b2c35;
   --line-strong: #3b3c47;
@@ -169,11 +170,17 @@ body {
 }
 
 /* Calendar blocks. A session takes its channel's colour; an event is neutral. */
+/* A timebox: a light dotted fill in the channel's colour, titled in that colour. */
 .session-block {
   --tag: var(--accent);
-  background: color-mix(in srgb, var(--tag) 15%, var(--surface));
-  border-left: 3px solid var(--tag);
-  color: var(--ink);
+  background-color: color-mix(in srgb, var(--tag) 9%, var(--surface));
+  background-image: radial-gradient(color-mix(in srgb, var(--tag) 38%, transparent) 0.9px, transparent 1.3px);
+  background-size: 7px 7px;
+  color: color-mix(in srgb, var(--tag) 78%, var(--ink));
+}
+[data-theme='dark'] .session-block {
+  background-color: color-mix(in srgb, var(--tag) 16%, var(--surface));
+  color: color-mix(in srgb, var(--tag) 55%, white);
 }
 .event-block {
   background: var(--hover);

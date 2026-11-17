@@ -16,12 +16,12 @@ const chip = (on: boolean) =>
   `flex h-7 items-center gap-1 rounded-md border px-2.5 text-[12.5px] ${on ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-2 hover:bg-hover'}`;
 
 /** Everything without a day, grouped by how soon you mean to get to it. */
-export function BacklogPage() {
+export function BacklogPage({ folder }: { folder?: Id }) {
   const all = useTasksForDay(BACKLOG);
   const folders = useBacklogFolders();
   const channels = useChannelMap();
   const filter = useUi((s) => s.filter);
-  const [folderId, setFolderId] = useState<Id | null>(null);
+  const [folderId, setFolderId] = useState<Id | null>(folder ?? null);
   const [priority, setPriority] = useState<BacklogPriority | 'any'>('any');
   const [naming, setNaming] = useState(false);
 

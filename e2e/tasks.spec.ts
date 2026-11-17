@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, addTasks } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -11,14 +11,7 @@ test.beforeEach(async ({ page }) => {
 const tasks = (page: Page) => page.getByTestId('task');
 const card = (page: Page, title: string) => tasks(page).filter({ hasText: title });
 
-async function quickAdd(page: Page, ...titles: string[]) {
-  const row = page.getByLabel(/^Add task to/).first();
-  for (const title of titles) {
-    await row.fill(title);
-    await row.press('Enter');
-  }
-  await row.press('Escape');
-}
+const quickAdd = addTasks;
 
 test('the add window applies typing shortcuts as you type', async ({ page }) => {
   await page.keyboard.press('a');

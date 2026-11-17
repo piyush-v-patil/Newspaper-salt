@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, setProfile, test } from './fixtures';
+import { expect, setProfile, test, addTasks } from './fixtures';
 
 async function openAt(page: Page, dateTime: string) {
   await page.clock.install({ time: new Date(dateTime) });
@@ -45,10 +45,7 @@ test('weekly objectives collect tasks, track time and progress, and link from an
   await page.keyboard.press('t');
 
   // Link another task from the day with R.
-  const row = page.getByLabel(/^Add task to \d/);
-  await row.fill('Phone screens ~1h');
-  await row.press('Enter');
-  await row.press('Escape');
+  await addTasks(page, 'Phone screens ~1h');
   await card(page, 'Phone screens').hover();
   await page.keyboard.press('r');
   await page.getByPlaceholder('Link to an objective').fill('hire');

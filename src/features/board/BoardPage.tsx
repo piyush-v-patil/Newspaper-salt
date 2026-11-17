@@ -9,6 +9,7 @@ import type { Task } from '@/data/types';
 import { shiftDay, type Day } from '@/domain/dates';
 import { monthLabel, shortDate, weekdayName } from '@/domain/dayLabels';
 import { matchesFilter } from '@/domain/filter';
+import { DayHeading } from '@/features/common/DayHeading';
 import { ViewHeader } from '@/features/common/ViewHeader';
 import { useDayKeys } from '@/features/common/useDayKeys';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
@@ -23,17 +24,14 @@ const STRIDE = COLUMN_WIDTH + GAP;
 const PAGE = 7;
 const NONE: WorkedOn[] = [];
 
-function DayColumn({ day, tasks, worked, isToday, focused, onFocus }: { day: Day; tasks: Task[]; worked: WorkedOn[]; isToday: boolean; focused: boolean; onFocus: () => void }) {
+function DayColumn({ day, tasks, worked, isToday, onFocus }: { day: Day; tasks: Task[]; worked: WorkedOn[]; isToday: boolean; onFocus: () => void }) {
   return (
     <section aria-label={`${weekdayName(day)} ${shortDate(day)}`} data-day={day} className="flex h-full shrink-0 flex-col" style={{ width: STRIDE, paddingLeft: GAP }}>
-      <button type="button" onClick={onFocus} className="flex items-baseline gap-2 rounded px-1 pb-1 text-left">
-        <span className={`text-[15px] font-semibold tracking-tight ${isToday ? 'text-accent' : focused ? 'text-ink' : 'text-ink-2'}`}>{weekdayName(day)}</span>
-        <span className="text-[12.5px] text-ink-3">{shortDate(day)}</span>
-      </button>
-      <div className="px-1 pb-2.5">
+      <div className="flex flex-col gap-3 px-1 pb-3">
+        <DayHeading day={day} isToday={isToday} level={2} onClick={onFocus} />
         <WorkloadCounter day={day} tasks={tasks} />
       </div>
-      <AddTaskRow day={day} />
+      <AddTaskRow day={day} tasks={tasks} />
       <div className="mt-2 min-h-0 flex-1 overflow-y-auto pb-6">
         <TaskList listId={day} tasks={tasks} className={worked.length ? '' : 'min-h-full'} />
         <WorkedOnCards items={worked} />
@@ -50,7 +48,6 @@ export function BoardPage() {
   const scroller = useRef<HTMLDivElement>(null);
   const prepended = useRef(0);
   const filter = useUi((s) => s.filter);
-  const focusedDay = useUi((s) => s.focusedDay);
   const setFocusedDay = useUi((s) => s.setFocusedDay);
   const channels = useChannelMap();
 
@@ -114,12 +111,7 @@ export function BoardPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ViewHeader
-        title={monthLabel(leftmost)}
-        onPrevious={() => step(-1)}
-        onNext={() => step(1)}
-        onBackToToday={leftmost !== current ? () => scrollToDay(current) : undefined}
-      />
+      <ViewHeader title={monthLabel(leftmost)} onPrevious={() => step(-1)} onNext={() => step(1)} onToday={() => scrollToDay(current)} />
       <div ref={scroller} onScroll={onScroll} data-testid="board" className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden pt-5">
         {days.map((day) => (
           <DayColumn
@@ -128,7 +120,6 @@ export function BoardPage() {
             tasks={ordered[day] ?? []}
             worked={worked.get(day) ?? NONE}
             isToday={day === current}
-            focused={day === (focusedDay ?? current)}
             onFocus={() => setFocusedDay(day)}
           />
         ))}

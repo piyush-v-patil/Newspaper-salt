@@ -12,11 +12,12 @@ import { nowMinutes } from '@/domain/clock';
 import { formatClock, weekdayOf, type Day } from '@/domain/dates';
 import { shortDate, weekdayName } from '@/domain/dayLabels';
 import { layoutLanes, snap, SNAP_MIN } from '@/domain/scheduling';
+import { useUi } from '@/app/uiStore';
 import { useDnd } from '@/features/task/dndStore';
 import { useOpenTask } from '@/features/task/useOpenTask';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
-import { calendarDropId, DAY_MIN, HOUR_PX, minToPx, pxToMin } from './metrics';
+import { calendarDropId, DAY_MIN, minToPx, pxToMin } from './metrics';
 
 type Block =
   | { kind: 'session'; id: string; day: Day; startMin: number; endMin: number; task: Task }
@@ -150,6 +151,8 @@ interface ColumnProps {
 }
 
 function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, onBlockPointerDown, onEmptyPointerDown }: ColumnProps) {
+  // Re-render when zooming; the pixel helpers read the same value.
+  const hourPx = useUi((s) => s.hourPx);
   const settings = useSettings();
   const channels = useChannelMap();
   const ghost = useDnd((s) => (s.ghost?.day === day ? s.ghost : null));
@@ -166,7 +169,7 @@ function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, o
       className="relative min-w-0 flex-1 border-l border-line"
       style={{
         height: minToPx(DAY_MIN),
-        backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, var(--line) ${HOUR_PX - 1}px, var(--line) ${HOUR_PX}px)`,
+        backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${hourPx - 1}px, var(--line) ${hourPx - 1}px, var(--line) ${hourPx}px)`,
       }}
     >
       {/* Outside working hours */}
@@ -284,6 +287,7 @@ function DayColumn({ day, blocks, isToday, nowMin, drawing, editingId, onEdit, o
  * from a list land here as sessions.
  */
 export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader?: boolean }) {
+  useUi((s) => s.hourPx);
   const settings = useSettings();
   const schedule = useSchedule(days);
   const openTask = useOpenTask();

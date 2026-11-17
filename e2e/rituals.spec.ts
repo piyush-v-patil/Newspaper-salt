@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, setSettings, test } from './fixtures';
+import { expect, setSettings, test, addTasks, addTasksVia } from './fixtures';
 
 async function openAt(page: Page, dateTime: string) {
   await page.clock.install({ time: new Date(dateTime) });
@@ -18,24 +18,17 @@ const tasks = (page: Page) => page.getByTestId('task');
 const card = (page: Page, title: string) => tasks(page).filter({ hasText: title });
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Main' });
 
-async function quickAdd(page: Page, ...titles: string[]) {
-  const row = page.getByLabel(/^Add task to/).first();
-  for (const title of titles) {
-    await row.fill(title);
-    await row.press('Enter');
-  }
-  await row.press('Escape');
-}
+const quickAdd = addTasks;
 
 test('unfinished tasks roll over at midnight while the app is open, with a count', async ({ page }) => {
   await openAt(page, '2026-11-17T22:00:00');
   await quickAdd(page, 'Finished today', 'Left undone');
   await page.getByRole('checkbox', { name: 'Complete Finished today' }).click();
   await expect(page.getByRole('checkbox', { name: 'Reopen Finished today' })).toBeChecked();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tuesday, November 17');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('TuesdayNovember 17');
 
   await page.clock.fastForward('02:30:00');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wednesday, November 18');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('WednesdayNovember 18');
   await expect(tasks(page)).toHaveText([/Left undone/]);
   await expect(card(page, 'Left undone').getByTitle('Rolled over 1 day in a row')).toHaveText('1');
 
@@ -109,11 +102,8 @@ test('daily planning walks from a look back to a finished plan', async ({ page }
 
   // Step 1: add tasks, and pull one in from the backlog.
   await expect(page.getByRole('heading', { name: 'What do you want to get done today?' })).toBeVisible();
-  await page.getByLabel('Add task to backlog').fill('From the backlog ~45');
-  await page.getByLabel('Add task to backlog').press('Enter');
-  await page.getByLabel('Add task to 2026-11-18').fill('Big new thing ~5h');
-  await page.getByLabel('Add task to 2026-11-18').press('Enter');
-  await page.getByLabel('Add task to 2026-11-18').press('Escape');
+  await addTasksVia(page, page.getByLabel('Add task to backlog'), 'From the backlog ~45');
+  await addTasksVia(page, page.getByLabel('Add task to 2026-11-18'), 'Big new thing ~5h');
   await card(page, 'From the backlog').hover();
   await page.keyboard.press('s');
   await expect(page.getByRole('region', { name: 'Today' }).getByTestId('task')).toHaveCount(3);

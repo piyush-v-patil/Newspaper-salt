@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, addTasks } from './fixtures';
 
 async function openAt(page: Page, time: string) {
   await page.clock.install({ time: new Date(`2026-11-17T${time}:00`) });
@@ -9,14 +9,7 @@ async function openAt(page: Page, time: string) {
 
 const card = (page: Page, title: string) => page.getByTestId('task').filter({ hasText: title });
 
-async function quickAdd(page: Page, ...titles: string[]) {
-  const row = page.getByLabel(/^Add task to/).first();
-  for (const title of titles) {
-    await row.fill(title);
-    await row.press('Enter');
-  }
-  await row.press('Escape');
-}
+const quickAdd = addTasks;
 
 test('Space starts a timer and enters focus mode; the time survives a pause and a reload', async ({ page }) => {
   await openAt(page, '09:00');

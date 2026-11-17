@@ -1,41 +1,58 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavToggle } from '@/app/LeftNav';
+import { useProfile } from '@/data/ReferenceData';
 import { FilterButton } from './FilterButton';
 
 interface Props {
-  title: string;
+  /** Shown after the controls; the Today view leaves it out and heads its list with the date instead. */
+  title?: string;
   onPrevious: () => void;
   onNext: () => void;
-  /** Shown only when the view has moved away from today. */
-  onBackToToday?: () => void;
+  onToday: () => void;
+  /** Labels for the arrows, e.g. "Previous day". */
+  stepLabel?: 'day' | 'week' | 'month';
   children?: ReactNode;
 }
 
-const arrow = 'grid h-7 w-7 place-items-center rounded text-ink-2 hover:bg-hover';
+export const headerButton = 'flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface px-2 text-[12.5px] text-ink-2 hover:bg-hover hover:text-ink';
+const square = 'grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink';
 
-/** Date controls on the left, filter on the right. Shared by the Today and Board views. */
-export function ViewHeader({ title, onPrevious, onNext, onBackToToday, children }: Props) {
+/** The person's initial, linking to Settings. */
+function Avatar() {
+  const { name } = useProfile();
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-6">
+    <Link
+      to="/settings"
+      aria-label="Settings"
+      title="Settings"
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-[12px] font-semibold uppercase text-white hover:opacity-90"
+    >
+      {name.trim().charAt(0) || '·'}
+    </Link>
+  );
+}
+
+/** Arrows, Today and Filter on the left; view controls and the avatar on the right. */
+export function ViewHeader({ title, onPrevious, onNext, onToday, stepLabel = 'day', children }: Props) {
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-2 px-4">
       <NavToggle />
-      <div className="flex shrink-0 items-center">
-        <button type="button" aria-label="Previous day" onClick={onPrevious} className={arrow}>
-          <ChevronLeft size={16} />
-        </button>
-        <button type="button" aria-label="Next day" onClick={onNext} className={arrow}>
-          <ChevronRight size={16} />
-        </button>
-      </div>
-      <h1 className="min-w-0 truncate text-[16px] font-semibold tracking-tight">{title}</h1>
-      {onBackToToday && (
-        <button type="button" onClick={onBackToToday} className="ml-2 h-7 shrink-0 whitespace-nowrap rounded-md border border-line px-2.5 text-[12.5px] text-ink-2 hover:bg-hover">
-          Back to today
-        </button>
-      )}
+      <button type="button" aria-label={`Previous ${stepLabel}`} onClick={onPrevious} className={square}>
+        <ChevronLeft size={15} />
+      </button>
+      <button type="button" aria-label={`Next ${stepLabel}`} onClick={onNext} className={square}>
+        <ChevronRight size={15} />
+      </button>
+      <button type="button" onClick={onToday} className={headerButton}>
+        <CalendarDays size={14} /> Today
+      </button>
+      <FilterButton />
+      {title && <h1 className="ml-2 min-w-0 truncate text-[15px] font-semibold tracking-tight">{title}</h1>}
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {children}
-        <FilterButton />
+        <Avatar />
       </div>
     </header>
   );

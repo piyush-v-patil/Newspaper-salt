@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, addTasks } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -33,10 +33,7 @@ test('Ctrl+K runs commands by name, including from inside a text field', async (
 });
 
 test('the palette finds tasks by name and opens them', async ({ page }) => {
-  const row = page.getByLabel(/^Add task to \d/);
-  await row.fill('Renew passport');
-  await row.press('Enter');
-  await row.press('Escape');
+  await addTasks(page, 'Renew passport');
   await expect(page.getByTestId('task')).toHaveCount(1);
 
   await page.keyboard.press('Control+k');

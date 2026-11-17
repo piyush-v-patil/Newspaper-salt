@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { DEFAULT_HOUR_PX, HOUR_HEIGHTS, setHourPx } from '@/features/calendar/metrics';
 import type { Id, TaskDay } from '@/data/types';
 import type { Day } from '@/domain/dates';
 import type { TaskFilter } from '@/domain/filter';
@@ -20,7 +21,8 @@ interface UiState {
   /** The day the current view is centred on; new tasks default to it. Null means today. */
   focusedDay: Day | null;
   /** The add-task window, and the day it will add to. */
-  addWindow: { day: TaskDay | null } | null;
+  /** The add-task card: the day it adds to, and the row it opened from (to sit over it). */
+  addWindow: { day: TaskDay | null; anchor: { top: number; left: number } | null; folderId: Id | null } | null;
   calendarSpan: CalendarSpan;
   workloadMode: WorkloadMode;
   /** The task that auto-scheduling could not fit, while the user decides what to do. */
@@ -32,6 +34,9 @@ interface UiState {
   navDrawerOpen: boolean;
   /** Desktop: the floating focus bar was put away with its shortcut. */
   floatingBarHidden: boolean;
+  /** Calendar zoom: the height of one hour. */
+  hourPx: number;
+  zoomCalendar: (direction: 1 | -1) => void;
   setCalendarSpan: (span: CalendarSpan) => void;
   cycleWorkloadMode: () => void;
   setNoRoomTask: (id: Id | null) => void;
@@ -42,7 +47,7 @@ interface UiState {
   setFilter: (filter: TaskFilter | null) => void;
   setFilterMenuOpen: (open: boolean) => void;
   setFocusedDay: (day: Day | null) => void;
-  openAddTask: (day?: TaskDay) => void;
+  openAddTask: (day?: TaskDay, anchor?: { top: number; left: number }, folderId?: Id | null) => void;
   closeAddTask: () => void;
 }
 
@@ -63,6 +68,13 @@ export const useUi = create<UiState>()(
       shortcutsOpen: false,
       navDrawerOpen: false,
       floatingBarHidden: false,
+      hourPx: DEFAULT_HOUR_PX,
+      zoomCalendar: (direction) =>
+        set((s) => {
+          const i = HOUR_HEIGHTS.indexOf(s.hourPx);
+          const next = HOUR_HEIGHTS[Math.max(0, Math.min(HOUR_HEIGHTS.length - 1, (i === -1 ? 2 : i) + direction))];
+          return { hourPx: next };
+        }),
       setCalendarSpan: (calendarSpan) => set({ calendarSpan }),
       cycleWorkloadMode: () =>
         set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : s.workloadMode === 'work' ? 'actual' : 'all' })),
@@ -74,7 +86,7 @@ export const useUi = create<UiState>()(
       setFilter: (filter) => set({ filter }),
       setFilterMenuOpen: (filterMenuOpen) => set({ filterMenuOpen }),
       setFocusedDay: (focusedDay) => set({ focusedDay }),
-      openAddTask: (day) => set((s) => ({ addWindow: { day: day ?? s.focusedDay } })),
+      openAddTask: (day, anchor, folderId) => set((s) => ({ addWindow: { day: day ?? s.focusedDay, anchor: anchor ?? null, folderId: folderId ?? null } })),
       closeAddTask: () => set({ addWindow: null }),
     }),
     {
@@ -86,7 +98,12 @@ export const useUi = create<UiState>()(
         filter: s.filter,
         calendarSpan: s.calendarSpan,
         workloadMode: s.workloadMode,
+        hourPx: s.hourPx,
       }),
     },
   ),
 );
+
+// The calendar's pixel maths reads the zoom from here, including while dragging.
+setHourPx(useUi.getState().hourPx);
+useUi.subscribe((s) => setHourPx(s.hourPx));

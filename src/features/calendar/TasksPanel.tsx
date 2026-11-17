@@ -28,7 +28,7 @@ export function TasksPanel() {
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         <WorkloadCounter day={day} tasks={tasks} />
-        <AddTaskRow day={day} />
+        <AddTaskRow day={day} tasks={tasks} />
         <TaskList listId={day} tasks={ordered[day] ?? []} className="min-h-24" />
       </div>
     </div>
