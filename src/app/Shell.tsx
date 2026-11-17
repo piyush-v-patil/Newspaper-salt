@@ -17,6 +17,8 @@ import { RightPanel } from './RightPanel';
 import { UndoToast } from './UndoToast';
 import { useTheme } from './theme';
 import { useAutoBackup } from './useAutoBackup';
+import { useSync } from '@/sync/useSync';
+import { FirstSyncChoice } from '@/features/settings/AccountSettings';
 import { useDayChange } from './useToday';
 import { useDesktop } from './useDesktop';
 import { useLayout } from './useLayout';
@@ -45,6 +47,7 @@ export function Shell() {
 function ShellBody() {
   useTheme();
   useAutoBackup();
+  useSync();
   useGlobalShortcuts();
   useTaskShortcuts();
   useDayChange();
@@ -73,6 +76,7 @@ function ShellBody() {
         <FocusNudges />
         <UndoToast />
       </div>
+      <FirstSyncChoice />
       {!focusing && <FocusBar />}
       <AddTaskWindow />
       <TaskPage />

@@ -11,6 +11,8 @@ import { nowMinutes } from '@/domain/clock';
 import { formatClock, formatMinutes, shiftDay } from '@/domain/dates';
 import { relativeDayLabel } from '@/domain/dayLabels';
 import { EVENING_FROM_MIN } from '@/domain/rituals';
+import { AccountForm } from '@/features/settings/AccountSettings';
+import { useSyncStatus } from '@/sync/controller';
 import { CommitmentsEditor, isValidCommitment, saveCommitments, type Commitment } from './Commitments';
 
 const STEPS = 6;
@@ -80,6 +82,29 @@ function ChannelChips({ context, kind, picked, onToggle }: { context: Context; k
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/** On the first screen: someone who already uses the app elsewhere signs in and gets their data instead of starting over. */
+function SignInInstead() {
+  const configured = useSyncStatus((s) => s.configured);
+  const user = useSyncStatus((s) => s.user);
+  const [open, setOpen] = useState(false);
+  if (!configured) return null;
+  const box = 'mx-auto -mt-8 w-full max-w-[520px] px-6 pb-16';
+  if (user) return <p className={`${box} text-[13px] text-ink-2`}>Signed in as {user.email}. Fetching your data…</p>;
+  return (
+    <div className={box}>
+      <div className="border-t border-line pt-5">
+      {open ? (
+        <AccountForm compact />
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="text-[13.5px] text-accent hover:underline">
+          Already use Life Of Pi on another device? Sign in
+        </button>
+      )}
       </div>
     </div>
   );
@@ -334,6 +359,7 @@ export function SetupPage() {
             </button>
           )}
         </form>
+        {step === 0 && <SignInInstead />}
       </div>
       <p className="sr-only" aria-live="polite">
         {nowMinutes() >= 0 && `Step ${step + 1} of ${STEPS}`}

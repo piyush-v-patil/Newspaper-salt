@@ -2,7 +2,9 @@ import { format } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 import { runBackup, updateBackupStatus, useBackupStatus } from '@/data/autoBackup';
 import type { BackupEntry } from '@/platform/types';
-import { backupTaskCount, exportData, parseBackup, restoreBackup, type Backup } from '@/data/backup';
+import { backupTaskCount, exportData, parseBackup, restoreBackup, TABLES, type Backup } from '@/data/backup';
+import { markEverything } from '@/sync/engine';
+import { outbox, unlinkDevice, useSyncStatus } from '@/sync/controller';
 import { db } from '@/data/db';
 import { now } from '@/domain/clock';
 import { platform } from '@/platform';
@@ -40,12 +42,16 @@ export function DataSettings() {
     if (!pending) return;
     // What is here now is saved first, so a restore can itself be undone.
     await runBackup('safety');
+    // Signed in: everything here now is marked, so what the backup lacks is deleted on other devices too.
+    if (useSyncStatus.getState().user) await markEverything(db, outbox, TABLES, now());
     await restoreBackup(pending);
     location.assign(BASE);
   }
 
   async function eraseEverything() {
     await runBackup('safety');
+    // Signed in, this only clears the device: on restart it takes the account's data again.
+    unlinkDevice();
     db.close();
     await db.delete();
     location.assign(BASE);
@@ -106,7 +112,11 @@ export function DataSettings() {
         <p className="text-[12.5px] text-ink-3">Deletes all tasks, history and settings on this device and starts setup again.</p>
         {erasing ? (
           <div role="alert" className="flex flex-col gap-3 rounded-xl border border-over p-4">
-            <p className="text-[13.5px]">Everything will be deleted for good. Export a backup first if you might want any of it.</p>
+            <p className="text-[13.5px]">
+              {useSyncStatus.getState().user
+                ? 'Everything on this device will be deleted. Your account keeps its copy, and this device downloads it again when it restarts.'
+                : 'Everything will be deleted for good. A backup is saved first, just in case.'}
+            </p>
             <div className="flex gap-2">
               <button type="button" onClick={() => void eraseEverything()} className={danger}>
                 Erase everything

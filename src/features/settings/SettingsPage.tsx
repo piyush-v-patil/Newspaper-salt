@@ -12,10 +12,12 @@ import { platform } from '@/platform';
 import { ChannelsSettings } from './ChannelsSettings';
 import { Group, NumberInput, Row, Select, TimeInput, Toggle } from './controls';
 import { DataSettings } from './DataSettings';
+import { AccountSettings } from './AccountSettings';
 import { ThemePicker } from './ThemePicker';
 
 export const SETTINGS_SECTIONS = [
   { id: 'general', label: 'General' },
+  { id: 'account', label: 'Account & sync' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'schedule', label: 'Schedule' },
   { id: 'rituals', label: 'Rituals' },
@@ -388,6 +390,7 @@ function Shortcuts() {
 }
 
 const BODIES: Record<SettingsSection, () => React.ReactElement> = {
+  account: AccountSettings,
   general: General,
   tasks: Tasks,
   schedule: Schedule,

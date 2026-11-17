@@ -1,7 +1,7 @@
 import { db } from './db';
 
 /** Every table that holds the person's data. Bump BACKUP_VERSION if the shape changes. */
-const TABLES = [
+export const TABLES = [
   'meta',
   'tasks',
   'subtasks',

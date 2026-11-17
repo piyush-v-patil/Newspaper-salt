@@ -88,5 +88,5 @@ Since then: a month range on the calendar, turning an event into a task, repeati
 
 - **Automatic backups.** The Windows app saves a backup file every day (when something changed) to `Documents\Life Of Pi Backups` or a folder you choose, such as a OneDrive folder; the web app keeps daily snapshots in the browser and reminds you weekly to download a copy. A backup is also taken before any restore, import or erase. The last two weeks are kept, then one a week for two months. Settings → Your data lists them, with Back up now and Restore.
 
-Next: sign-in and sync across devices.
+- **Sign-in and sync.** Settings → Account & sync: create an account or sign in with email and password, and every device signed in to it stays in step, in the background (on start, every half minute, on focus, back online, and a moment after any change). Everything still works offline. The newest change to a record wins. The first sign-in on a device uploads its data, downloads the account's, or (when both have data) asks whether to use the account's or combine them. A new device can sign in from the welcome screen and skip setup. Data lives in Supabase (`supabase/schema.sql`); row-level security means each account sees only its own rows.
 
