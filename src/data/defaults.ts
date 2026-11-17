@@ -23,6 +23,8 @@ export const defaultSettings: Settings = {
   rescheduleOnConflict: true,
   rescheduleOnEarlyFinish: true,
   focusOnTimerStart: true,
+  planSummaryStep: true,
+  endOfDayMessage: { kind: 'encouragement', text: '' },
   breakReminders: { on: false, workMin: 25, breakMin: 5 },
   timerSounds: true,
   archiveAfterDays: 4,

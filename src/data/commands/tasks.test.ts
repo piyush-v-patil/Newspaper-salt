@@ -261,3 +261,14 @@ describe('commands issued back to back', () => {
     expect((await tasksForDay(DAY)).map((t) => t.title)).toEqual(['fine']);
   });
 });
+
+describe('undo pressed straight after a command', () => {
+  it('waits for the command to finish, then reverses it', async () => {
+    // Neither call is awaited before the next is made.
+    const adding = createTask({ title: 'quick' });
+    const undoing = undoLast();
+    await adding;
+    expect(await undoing).toBe('Add task');
+    expect(await tasksForDay(DAY)).toEqual([]);
+  });
+});

@@ -1,11 +1,11 @@
 import { useUi } from '@/app/uiStore';
-import { today } from '@/domain/clock';
+import { useToday } from '@/app/useToday';
 import { relativeDayLabel } from '@/domain/dayLabels';
 import { TimeGrid } from './TimeGrid';
 
 /** The focused day on a timeline, shown beside the Today and Board views. */
 export function CalendarPanel() {
-  const current = today();
+  const current = useToday();
   const day = useUi((s) => s.focusedDay) ?? current;
   return (
     <div className="flex h-full w-[300px] flex-col">

@@ -1,4 +1,4 @@
-import { addDays, format, parse } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, parse } from 'date-fns';
 
 /** A local calendar day, stored as YYYY-MM-DD. Never a timestamp. */
 export type Day = string;
@@ -46,4 +46,9 @@ export function formatClock(min: number, style: '12h' | '24h' = '24h'): string {
   const minutes = String(m % 60).padStart(2, '0');
   if (style === '24h') return `${String(hours).padStart(2, '0')}:${minutes}`;
   return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+/** Whole calendar days from `from` to `to`; negative if `to` is earlier. */
+export function daysBetween(from: Day, to: Day): number {
+  return differenceInCalendarDays(fromDay(to), fromDay(from));
 }

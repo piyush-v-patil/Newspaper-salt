@@ -1,6 +1,7 @@
 import { Link, type LinkProps } from '@tanstack/react-router';
 import {
   Calendar,
+  Check,
   CalendarRange,
   ChartColumn,
   ChevronsLeft,
@@ -16,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useRitualStatus, type RitualState } from '@/features/rituals/ritualStatus';
 import { Kbd } from '@/ui/Kbd';
 import { useUi } from './uiStore';
 
@@ -44,7 +46,7 @@ const weekly: Item[] = [
 ];
 const lists: Item[] = [{ to: '/backlog', label: 'Backlog', icon: Layers, hint: 'B' }];
 
-function NavLink({ item }: { item: Item }) {
+function NavLink({ item, state = null }: { item: Item; state?: RitualState }) {
   const Icon = item.icon;
   return (
     <Link
@@ -54,7 +56,9 @@ function NavLink({ item }: { item: Item }) {
     >
       <Icon size={16} strokeWidth={1.75} />
       <span className="flex-1 truncate">{item.label}</span>
-      {item.hint && (
+      {state === 'due' && <span className="rounded bg-accent-soft px-1.5 text-[11px] font-medium text-accent">Start</span>}
+      {state === 'done' && <Check size={14} className="text-done" aria-label="Done" />}
+      {item.hint && state === null && (
         <span className="opacity-0 transition-opacity group-hover:opacity-100">
           <Kbd>{item.hint}</Kbd>
         </span>
@@ -63,12 +67,12 @@ function NavLink({ item }: { item: Item }) {
   );
 }
 
-function Group({ title, items }: { title?: string; items: Item[] }) {
+function Group({ title, items, states = {} }: { title?: string; items: Item[]; states?: Record<string, RitualState> }) {
   return (
     <div className="flex flex-col gap-0.5">
       {title && <div className="px-2 pb-1 pt-4 text-[11px] font-medium uppercase tracking-wider text-ink-3">{title}</div>}
       {items.map((item) => (
-        <NavLink key={item.to} item={item} />
+        <NavLink key={item.to} item={item} state={states[item.to ?? ''] ?? null} />
       ))}
     </div>
   );
@@ -76,6 +80,7 @@ function Group({ title, items }: { title?: string; items: Item[] }) {
 
 function NavBody() {
   const toggleLeft = useUi((s) => s.toggleLeft);
+  const status = useRitualStatus();
   return (
     <nav aria-label="Main" className="flex h-full w-[224px] flex-col bg-panel px-2.5 py-3">
       <div className="flex items-center justify-between px-2 pb-3">
@@ -91,7 +96,7 @@ function NavBody() {
         </button>
       </div>
       <Group items={views} />
-      <Group title="Daily rituals" items={daily} />
+      <Group title="Daily rituals" items={daily} states={{ '/plan': status.plan, '/shutdown': status.shutdown }} />
       <Group title="Weekly rituals" items={weekly} />
       <Group title="Lists" items={lists} />
       <div className="mt-auto">

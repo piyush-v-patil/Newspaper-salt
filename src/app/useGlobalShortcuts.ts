@@ -37,6 +37,12 @@ export function useGlobalShortcuts(): void {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
 
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
+        // Ctrl+F searches tasks rather than the page.
+        e.preventDefault();
+        useUi.setState({ rightOpen: true, rightPanel: 'search' });
+        return;
+      }
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'z' && !isTyping(e.target)) {
         e.preventDefault();
         void undoLast();

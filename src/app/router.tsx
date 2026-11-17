@@ -3,6 +3,9 @@ import { isDay, type Day } from '@/domain/dates';
 import { BoardPage } from '@/features/board/BoardPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
 import { FocusPage } from '@/features/focus/FocusPage';
+import { HighlightsPage } from '@/features/rituals/HighlightsPage';
+import { PlanPage } from '@/features/rituals/PlanPage';
+import { ShutdownPage } from '@/features/rituals/ShutdownPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -60,18 +63,15 @@ const focusTaskRoute = createRoute({
 const planRoute = createRoute({
   getParentRoute: parent,
   path: '/plan',
-  component: () => <ComingSoon title="Daily planning" phase={4} summary="A guided walk from a blank day to a realistic plan." />,
+  validateSearch: (search: Record<string, unknown>): { date?: Day } => (isDay(search.date) ? { date: search.date } : {}),
+  component: function Plan() {
+    const { date } = planRoute.useSearch();
+    // Keyed by day so planning a different day starts from that day's saved step.
+    return <PlanPage key={date ?? 'default'} date={date} />;
+  },
 });
-const shutdownRoute = createRoute({
-  getParentRoute: parent,
-  path: '/shutdown',
-  component: () => <ComingSoon title="Daily shutdown" phase={4} summary="Review the day, pick your highlights, and close it out." />,
-});
-const highlightsRoute = createRoute({
-  getParentRoute: parent,
-  path: '/highlights',
-  component: () => <ComingSoon title="Highlights" phase={4} summary="Each day's highlights and reflection, by date." />,
-});
+const shutdownRoute = createRoute({ getParentRoute: parent, path: '/shutdown', component: ShutdownPage });
+const highlightsRoute = createRoute({ getParentRoute: parent, path: '/highlights', component: HighlightsPage });
 const weeklyPlanRoute = createRoute({
   getParentRoute: parent,
   path: '/weekly/plan',

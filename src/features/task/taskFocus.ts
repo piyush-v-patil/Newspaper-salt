@@ -24,7 +24,8 @@ export const useTaskFocus = create<TaskFocusState>((set) => ({
   selectedId: null,
   action: null,
   focusSubtaskOnOpen: false,
-  setHovered: (hoveredId) => set({ hoveredId }),
+  // Pointing at a card hands control back from the keyboard selection to the mouse.
+  setHovered: (hoveredId) => set(hoveredId ? { hoveredId, selectedId: null } : { hoveredId }),
   select: (selectedId) => set({ selectedId }),
   openAction: (taskId, kind) => set({ action: { taskId, kind } }),
   closeAction: () => set({ action: null }),

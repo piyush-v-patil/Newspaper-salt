@@ -1,9 +1,11 @@
 import { useSortable } from '@dnd-kit/sortable';
+import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
 import { Clock, Flag } from 'lucide-react';
 import { setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
+import { PLANNING_CARD } from '@/data/commands/days';
 import { setActualForDay } from '@/data/commands/timer';
 import { useRunningTimer } from '@/data/queries';
 import { BACKLOG, type DailyPriority, type Task } from '@/data/types';
@@ -183,6 +185,10 @@ export function TaskCard({ task }: { task: Task }) {
   const closeAction = useTaskFocus((s) => s.closeAction);
   const setHovered = useTaskFocus((s) => s.setHovered);
   const openTask = useOpenTask();
+  const navigate = useNavigate();
+  // A ritual's card is a record of it; clicking goes back to that ritual.
+  const openRitual = (card: Task) =>
+    void (card.title === PLANNING_CARD && card.day !== BACKLOG ? navigate({ to: '/plan', search: { date: card.day } }) : navigate({ to: '/shutdown' }));
 
   return (
     <PopoverRoot open={actionKind !== null} onOpenChange={(next) => !next && closeAction()}>
@@ -195,7 +201,7 @@ export function TaskCard({ task }: { task: Task }) {
           data-testid="task"
           onMouseEnter={() => setHovered(task.id)}
           onMouseLeave={() => useTaskFocus.getState().hoveredId === task.id && setHovered(null)}
-          onClick={() => openTask(task.id)}
+          onClick={() => (task.kind === 'ritual' ? openRitual(task) : openTask(task.id))}
           className={`${cardClass} animate-card ${isDragging ? 'opacity-40' : ''} ${selected ? 'border-accent ring-1 ring-accent' : ''}`}
         >
           <TaskCardBody task={task} />

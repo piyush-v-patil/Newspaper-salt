@@ -1,9 +1,9 @@
 import { useNavigate } from '@tanstack/react-router';
+import { useToday } from '@/app/useToday';
 import { addDays, startOfWeek } from 'date-fns';
 import { useEffect, useMemo } from 'react';
 import { useUi, type CalendarSpan } from '@/app/uiStore';
 import { useSettings } from '@/data/ReferenceData';
-import { today } from '@/domain/clock';
 import { fromDay, shiftDay, toDay, type Day } from '@/domain/dates';
 import { monthLabel } from '@/domain/dayLabels';
 import { ViewHeader } from '@/features/common/ViewHeader';
@@ -23,7 +23,7 @@ export function CalendarPage({ date }: { date?: Day }) {
   const span = useUi((s) => s.calendarSpan);
   const setSpan = useUi((s) => s.setCalendarSpan);
   const setFocusedDay = useUi((s) => s.setFocusedDay);
-  const current = today();
+  const current = useToday();
   const anchor = date ?? current;
   const length = SPANS.find((s) => s.value === span)?.days ?? 7;
 

@@ -33,13 +33,15 @@ npm run e2e        # browser tests against a production build
 
 ## Status
 
-Phases 0 to 3 of 8 are done.
+Phases 0 to 4 of 8 are done.
 
 - **Phase 0:** project foundation, local storage, undo, app shell, light and dark themes.
 - **Phase 1:** tasks and the board. Add-task window with typing shortcuts (`~` time, `#` channel, `@` date, `!` priority), task cards, task page with subtasks and rich-text notes, channels and filter, the Today view, the day-column board with drag and drop, and the task keyboard shortcuts.
 - **Phase 2:** calendar and timeboxing. A time grid in the right panel and as its own view (day, 3 days, week); drag a task onto it, move and resize sessions, draw events; `X` auto-schedules into the next free time and offers choices when the day is full; planned time and sessions stay in step; finishing early shortens the session and pulls the next ones forward; a workload counter on every day.
 - **Phase 3:** timer and focus. `Space` starts or pauses a task's timer and `F` opens focus mode: one task with its timer, subtasks and notes. Actual time shows beside planned time on every card and can be typed in with `E`. A focus bar follows the running task, `K` takes a break, a prompt offers to switch when the next timeboxed task is about to start, and finishing the day's last task celebrates.
 
-Not built yet within these phases: the month calendar range, turning an event into a task, repeating events, editing a time entry's start and end, and showing tracked time on the calendar.
+- **Phase 4:** the daily cycle. Unfinished tasks roll over at midnight with a count of consecutive days; a task that rolls over too long with no progress goes to the archive (threshold adjustable, restorable); deleted tasks wait a week in the trash; `Ctrl+F` searches. Daily planning (`P`) walks through a look back, adding tasks, checking the workload, finalizing and a written plan, and resumes where you left off. Daily shutdown (`O`) reviews the day, keeps its highlights and a reflection, and files them under Highlights. Both are offered at their set times once setup is complete, never interrupting a running timer.
 
-The rituals, Backlog and Settings are placeholders until their phase.
+Not built yet within these phases: the month calendar range, turning an event into a task, repeating events, editing a time entry's start and end, showing tracked time on the calendar, and the faded "worked on this" copy a task leaves on earlier days.
+
+Weekly rituals, objectives, Backlog and Settings are placeholders until their phase.

@@ -65,7 +65,9 @@ export function useTaskShortcuts(): void {
         e.preventDefault();
         return moveSelection(e.key, e.shiftKey);
       }
-      if (!mod && !e.shiftKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      // In a ritual, Left and Right move between its steps instead.
+      const inRitual = /^\/(plan|shutdown)/.test(location.pathname);
+      if (!mod && !e.shiftKey && !inRitual && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         return moveSelection(e.key, false);
       }

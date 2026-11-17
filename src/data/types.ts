@@ -183,6 +183,10 @@ export interface Settings {
   rescheduleOnConflict: boolean;
   rescheduleOnEarlyFinish: boolean;
   focusOnTimerStart: boolean;
+  /** Include the written summary step at the end of planning. */
+  planSummaryStep: boolean;
+  /** What the shutdown's closing screen says. */
+  endOfDayMessage: { kind: 'encouragement' | 'none' | 'custom'; text: string };
   /** Suggest a break after each stretch of work. */
   breakReminders: { on: boolean; workMin: number; breakMin: number };
   /** Play a chime when a timer reaches the task's planned time. */

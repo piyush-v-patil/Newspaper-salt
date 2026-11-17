@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
+import { useToday } from '@/app/useToday';
 import { useUi } from '@/app/uiStore';
 import { useTasksForDay } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
-import { today } from '@/domain/clock';
 import { relativeDayLabel } from '@/domain/dayLabels';
 import { matchesFilter } from '@/domain/filter';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
@@ -11,7 +11,7 @@ import { WorkloadCounter } from '@/features/task/WorkloadCounter';
 
 /** The focused day's task list, shown beside the Calendar view so tasks can be dragged onto it. */
 export function TasksPanel() {
-  const current = today();
+  const current = useToday();
   const day = useUi((s) => s.focusedDay) ?? current;
   const filter = useUi((s) => s.filter);
   const channels = useChannelMap();

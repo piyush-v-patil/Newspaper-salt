@@ -3,6 +3,7 @@ import { ReferenceDataProvider } from '@/data/ReferenceData';
 import { NoRoomDialog } from '@/features/calendar/NoRoomDialog';
 import { FocusBar } from '@/features/focus/FocusBar';
 import { FocusNudges } from '@/features/focus/FocusNudges';
+import { RitualPrompt } from '@/features/rituals/RitualPrompt';
 import { AddTaskWindow } from '@/features/task/AddTaskWindow';
 import { TaskDndRoot } from '@/features/task/TaskDnd';
 import { TaskPage } from '@/features/task/TaskPage';
@@ -12,6 +13,7 @@ import { LeftNav } from './LeftNav';
 import { RightPanel } from './RightPanel';
 import { UndoToast } from './UndoToast';
 import { useTheme } from './theme';
+import { useDayChange } from './useToday';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
 
 /** Loads shared data first, so everything inside can rely on it being there. */
@@ -29,8 +31,10 @@ function ShellBody() {
   useTheme();
   useGlobalShortcuts();
   useTaskShortcuts();
+  useDayChange();
   // Focus mode clears the panels away; the navigation still slides in from the left edge.
-  const focusing = useRouterState({ select: (s) => s.location.pathname.startsWith('/focus') });
+  // The same goes for the rituals, which bring their own columns.
+  const focusing = useRouterState({ select: (s) => /^\/(focus|plan|shutdown)/.test(s.location.pathname) });
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-canvas text-ink">
@@ -47,6 +51,7 @@ function ShellBody() {
       <AddTaskWindow />
       <TaskPage />
       <NoRoomDialog />
+      <RitualPrompt />
       <Celebration />
     </div>
   );

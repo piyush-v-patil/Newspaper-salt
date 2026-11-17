@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { compareKeys } from '@/domain/ordering';
-import { db, getSettings } from './db';
-import type { Channel, Context, Id, Settings } from './types';
+import { db, getProfile, getSettings } from './db';
+import type { Channel, Context, Id, Profile, Settings } from './types';
 
 interface ReferenceData {
   settings: Settings;
+  profile: Profile;
   channels: Channel[];
   channelMap: Map<Id, Channel>;
   contexts: Context[];
@@ -22,19 +23,21 @@ const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.or
  */
 export function ReferenceDataProvider({ children }: { children: ReactNode }) {
   const settings = useLiveQuery(() => getSettings(), []);
+  const profile = useLiveQuery(() => getProfile(), []);
   const channelRows = useLiveQuery(() => db.channels.toArray(), []);
   const contextRows = useLiveQuery(() => db.contexts.toArray(), []);
 
   const value = useMemo(() => {
-    if (!settings || !channelRows || !contextRows) return null;
+    if (!settings || !profile || !channelRows || !contextRows) return null;
     const channels = channelRows.filter((c) => c.enabled).sort(byOrder);
     return {
       settings,
+      profile,
       channels,
       channelMap: new Map(channelRows.map((c) => [c.id, c])),
       contexts: contextRows.slice().sort(byOrder),
     };
-  }, [settings, channelRows, contextRows]);
+  }, [settings, profile, channelRows, contextRows]);
 
   if (!value) return null;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -47,6 +50,7 @@ function useReferenceData(): ReferenceData {
 }
 
 export const useSettings = (): Settings => useReferenceData().settings;
+export const useProfile = (): Profile => useReferenceData().profile;
 /** Enabled channels, in order. */
 export const useChannels = (): Channel[] => useReferenceData().channels;
 /** Every channel by id, including disabled ones, so old tasks still show their tag. */

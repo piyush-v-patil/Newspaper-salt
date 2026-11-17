@@ -2,6 +2,8 @@ import { useRouterState } from '@tanstack/react-router';
 import { Archive, CalendarDays, ListChecks, ListTodo, Search, Target, Trash2, type LucideIcon } from 'lucide-react';
 import { CalendarPanel } from '@/features/calendar/CalendarPanel';
 import { TasksPanel } from '@/features/calendar/TasksPanel';
+import { ArchivePanel, SearchPanel, TrashPanel } from '@/features/lists/panels';
+import { useTasksInState } from '@/data/queries';
 import { useUi, type RightPanelKind } from './uiStore';
 
 interface PanelDef {
@@ -17,12 +19,33 @@ const panels: PanelDef[] = [
   { kind: 'calendar', label: 'Calendar', icon: CalendarDays, hint: 'Shift C' },
   { kind: 'objectives', label: 'Weekly objectives', icon: Target, hint: 'Shift R', body: 'This week’s objectives and the time planned for each.' },
   { kind: 'backlog', label: 'Backlog', icon: ListTodo, hint: 'Shift B', body: 'Tasks without a day. Drag one onto a day to schedule it.' },
-  { kind: 'archive', label: 'Archive', icon: Archive, hint: 'Shift A', body: 'Tasks that rolled over too many days in a row land here.' },
-  { kind: 'search', label: 'Search', icon: Search, hint: 'Ctrl F', body: 'Find any task by name.' },
-  { kind: 'trash', label: 'Trash', icon: Trash2, body: 'Deleted tasks stay here for a week.' },
+  { kind: 'archive', label: 'Archive', icon: Archive, hint: 'Shift A' },
+  { kind: 'search', label: 'Search', icon: Search, hint: 'Ctrl F' },
+  { kind: 'trash', label: 'Trash', icon: Trash2 },
 ];
 
+function PanelBody({ kind, onCalendar, label, body }: { kind: RightPanelKind; onCalendar: boolean; label: string; body?: string }) {
+  switch (kind) {
+    case 'calendar':
+      return onCalendar ? <TasksPanel /> : <CalendarPanel />;
+    case 'archive':
+      return <ArchivePanel />;
+    case 'trash':
+      return <TrashPanel />;
+    case 'search':
+      return <SearchPanel />;
+    default:
+      return (
+        <div className="flex h-full w-[300px] flex-col gap-2 p-4">
+          <h2 className="text-[13px] font-semibold">{label}</h2>
+          <p className="text-[13px] text-ink-3">{body}</p>
+        </div>
+      );
+  }
+}
+
 export function RightPanel() {
+  const archivedCount = useTasksInState('archived').length;
   const { rightOpen, rightPanel, showRightPanel } = useUi();
   // In the Calendar view the calendar is already in the centre, so its slot holds the day's tasks.
   const onCalendar = useRouterState({ select: (s) => s.location.pathname === '/calendar' });
@@ -37,19 +60,7 @@ export function RightPanel() {
         className="overflow-hidden border-line transition-[width] duration-200 ease-out-soft"
         style={{ width: rightOpen ? 300 : 0, borderLeftWidth: rightOpen ? 1 : 0 }}
       >
-        {rightOpen &&
-          (active.kind === 'calendar' ? (
-            onCalendar ? (
-              <TasksPanel />
-            ) : (
-              <CalendarPanel />
-            )
-          ) : (
-            <div className="flex h-full w-[300px] flex-col gap-2 p-4">
-              <h2 className="text-[13px] font-semibold">{active.label}</h2>
-              <p className="text-[13px] text-ink-3">{active.body}</p>
-            </div>
-          ))}
+        {rightOpen && <PanelBody kind={active.kind} onCalendar={onCalendar} label={active.label} body={active.body} />}
       </aside>
       <div role="toolbar" aria-label="Side panels" className="flex w-12 flex-col items-center gap-1 border-l border-line py-3">
         {shown.map(({ kind, label, icon: Icon, hint }) => {
@@ -62,11 +73,16 @@ export function RightPanel() {
               aria-pressed={on}
               title={hint ? `${label}  ${hint}` : label}
               onClick={() => showRightPanel(kind)}
-              className={`grid h-8 w-8 place-items-center rounded-md transition-colors ${
+              className={`relative grid h-8 w-8 place-items-center rounded-md transition-colors ${
                 on ? 'bg-accent-soft text-accent' : 'text-ink-3 hover:bg-hover hover:text-ink'
               }`}
             >
               <Icon size={17} strokeWidth={1.75} />
+              {kind === 'archive' && archivedCount > 0 && (
+                <span className="tabular absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-over px-1 text-[9.5px] font-semibold text-white">
+                  {archivedCount}
+                </span>
+              )}
             </button>
           );
         })}

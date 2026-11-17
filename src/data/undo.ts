@@ -35,18 +35,24 @@ export function recordUndo(label: string, undo: () => Promise<void>, announce = 
   }));
 }
 
-/** Reverses the most recent command. Returns its label, or null if there was nothing to undo. */
-export async function undoLast(): Promise<string | null> {
-  const { stack } = useUndo.getState();
-  const entry = stack[stack.length - 1];
-  if (!entry) return null;
-  useUndo.setState((s) => ({
-    stack: s.stack.slice(0, -1),
-    toast: s.toast?.id === entry.id ? null : s.toast,
-  }));
-  // An undo is a command like any other, so it waits its turn in the queue.
-  await serial(entry.undo);
-  return entry.label;
+/**
+ * Reverses the most recent command. Returns its label, or null if there was
+ * nothing to undo. It waits its turn in the command queue, so an undo
+ * pressed while a command is still finishing reverses that command rather
+ * than finding nothing there.
+ */
+export function undoLast(): Promise<string | null> {
+  return serial(async () => {
+    const { stack } = useUndo.getState();
+    const entry = stack[stack.length - 1];
+    if (!entry) return null;
+    useUndo.setState((s) => ({
+      stack: s.stack.slice(0, -1),
+      toast: s.toast?.id === entry.id ? null : s.toast,
+    }));
+    await entry.undo();
+    return entry.label;
+  });
 }
 
 export function clearUndo(): void {

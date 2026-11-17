@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
+import { useToday } from '@/app/useToday';
 import { X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createEvent, deleteEvent, updateEvent } from '@/data/commands/events';
@@ -7,7 +8,7 @@ import { setTaskCompleted } from '@/data/commands/tasks';
 import { useSchedule } from '@/data/queries';
 import { useChannelMap, useSettings } from '@/data/ReferenceData';
 import type { Task } from '@/data/types';
-import { nowMinutes, today } from '@/domain/clock';
+import { nowMinutes } from '@/domain/clock';
 import { formatClock, type Day } from '@/domain/dates';
 import { shortDate, weekdayName } from '@/domain/dayLabels';
 import { layoutLanes, snap, SNAP_MIN } from '@/domain/scheduling';
@@ -233,7 +234,7 @@ export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader
   const settings = useSettings();
   const schedule = useSchedule(days);
   const openTask = useOpenTask();
-  const current = today();
+  const current = useToday();
   const scroller = useRef<HTMLDivElement>(null);
   const origin = useRef<Origin | null>(null);
   const dragRef = useRef<DragState | null>(null);

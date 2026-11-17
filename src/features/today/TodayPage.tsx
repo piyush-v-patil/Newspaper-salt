@@ -1,20 +1,21 @@
 import { useNavigate } from '@tanstack/react-router';
+import { useToday } from '@/app/useToday';
 import { useEffect, useMemo } from 'react';
 import { useUi } from '@/app/uiStore';
 import { useTasksForDay } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
-import { today } from '@/domain/clock';
 import { longDayLabel, shiftDay, type Day } from '@/domain/dates';
 import { matchesFilter } from '@/domain/filter';
 import { ViewHeader } from '@/features/common/ViewHeader';
 import { useDayKeys } from '@/features/common/useDayKeys';
+import { ArchiveNotice } from '@/features/lists/ArchiveNotice';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
 import { TaskList, useTaskLists } from '@/features/task/TaskDnd';
 import { WorkloadCounter } from '@/features/task/WorkloadCounter';
 
 export function TodayPage({ date }: { date?: Day }) {
   const navigate = useNavigate();
-  const current = today();
+  const current = useToday();
   const day = date ?? current;
   const all = useTasksForDay(day);
   const filter = useUi((s) => s.filter);
@@ -55,6 +56,7 @@ export function TodayPage({ date }: { date?: Day }) {
             </p>
           )}
           <TaskList listId={day} tasks={ordered[day] ?? []} />
+          {day === current && <ArchiveNotice day={day} />}
         </section>
       </div>
     </div>

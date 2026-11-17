@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
 import { db } from './db';
-import type { CalendarEvent, Id, RunningTimer, Session, Subtask, Task, TaskDay, TimeEntry } from './types';
+import type { CalendarEvent, DayRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
 
 const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.order, b.order);
 
@@ -81,4 +81,52 @@ export function useRunningTimer(): RunningTimer | null {
 export function useTimeEntries(taskId: Id | undefined): TimeEntry[] {
   const rows = useLiveQuery(() => (taskId ? db.timeEntries.where('taskId').equals(taskId).sortBy('start') : []), [taskId]);
   return rows ?? [];
+}
+
+/** Every task in the archive or the trash, most recently moved there first. */
+export function useTasksInState(state: Exclude<TaskState, 'active'>): Task[] {
+  const rows = useLiveQuery(() => db.tasks.where('state').equals(state).toArray(), [state]);
+  return useMemo(() => (rows ?? []).sort((a, b) => (b.stateChangedAt ?? 0) - (a.stateChangedAt ?? 0)), [rows]);
+}
+
+/** Time entries that started within a day. */
+export function useDayEntries(day: Day): TimeEntry[] {
+  const rows = useLiveQuery(() => {
+    const start = new Date(`${day}T00:00:00`).getTime();
+    return db.timeEntries.where('start').between(start, start + 24 * 60 * 60 * 1000, true, false).toArray();
+  }, [day]);
+  return rows ?? [];
+}
+
+export function emptyDayRecord(day: Day): DayRecord {
+  return {
+    day,
+    planStatus: 'none',
+    planStep: 0,
+    planText: '',
+    obstacles: '',
+    shutdownMin: null,
+    shutdownStatus: 'none',
+    highlights: [],
+    mood: null,
+    reflection: '',
+  };
+}
+
+/** The ritual record for a day; a blank one if nothing has been saved yet. Undefined while loading. */
+export function useDayRecord(day: Day): DayRecord | undefined {
+  return useLiveQuery(async () => (await db.days.get(day)) ?? emptyDayRecord(day), [day]);
+}
+
+/** Days that have been shut down, newest first. */
+export function useShutdownDays(): DayRecord[] {
+  const rows = useLiveQuery(() => db.days.toArray(), []);
+  return useMemo(() => (rows ?? []).filter((d) => d.shutdownStatus === 'done').sort((a, b) => (a.day < b.day ? 1 : -1)), [rows]);
+}
+
+/** Tasks by id, for showing lists of ids such as a day's highlights. */
+export function useTasksById(ids: Id[]): Map<Id, Task> {
+  const key = ids.join(',');
+  const rows = useLiveQuery(() => db.tasks.bulkGet(ids), [key]);
+  return useMemo(() => new Map((rows ?? []).flatMap((t) => (t ? [[t.id, t] as const] : []))), [rows]);
 }

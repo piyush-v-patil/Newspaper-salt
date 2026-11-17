@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useToday } from '@/app/useToday';
 import { useUi } from '@/app/uiStore';
 import { useTasksInRange } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
 import type { Task } from '@/data/types';
-import { today } from '@/domain/clock';
 import { shiftDay, type Day } from '@/domain/dates';
 import { monthLabel, shortDate, weekdayName } from '@/domain/dayLabels';
 import { matchesFilter } from '@/domain/filter';
@@ -39,7 +39,7 @@ function DayColumn({ day, tasks, isToday, focused, onFocus }: { day: Day; tasks:
 }
 
 export function BoardPage() {
-  const current = today();
+  const current = useToday();
   // The window of days rendered, as offsets from today. It grows as you scroll.
   const [range, setRange] = useState({ start: -PAGE, end: PAGE * 2 });
   const [leftmost, setLeftmost] = useState<Day>(current);
