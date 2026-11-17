@@ -1,4 +1,5 @@
-import type { Task } from '@/data/types';
+import type { Settings, Task } from '@/data/types';
+import { weekdayOf, type Day } from './dates';
 
 export interface Workload {
   /** Planned time on every task of the day. */
@@ -36,4 +37,9 @@ export function workloadLevel(workPlanned: number, thresholdMin: number): Worklo
   if (thresholdMin <= 0) return 'ok';
   if (workPlanned > thresholdMin) return 'over';
   return workPlanned >= thresholdMin * NEAR_RATIO ? 'near' : 'ok';
+}
+
+/** The workload limit for a day: that weekday's own, if it has one, else the daily limit. */
+export function workloadLimitFor(settings: Pick<Settings, 'workloadThresholdMin' | 'workloadByWeekday'>, day: Day): number {
+  return settings.workloadByWeekday?.[weekdayOf(day)] ?? settings.workloadThresholdMin;
 }

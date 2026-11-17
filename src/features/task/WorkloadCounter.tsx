@@ -5,7 +5,7 @@ import type { Task } from '@/data/types';
 import { today } from '@/domain/clock';
 import { formatMinutes, type Day } from '@/domain/dates';
 import { msToMinutes } from '@/domain/time';
-import { dayWorkload, workloadLevel } from '@/domain/workload';
+import { dayWorkload, workloadLevel, workloadLimitFor } from '@/domain/workload';
 import { useTaskData } from './TaskData';
 
 const TEXT = { ok: 'text-ink-3', near: 'text-warn', over: 'text-over' };
@@ -31,7 +31,7 @@ export function WorkloadCounter({ day, tasks }: { day: Day; tasks: Task[] }) {
     });
   }, [tasks, channels, contexts]);
 
-  const threshold = settings.workloadThresholdMin;
+  const threshold = workloadLimitFor(settings, day);
   const level = workloadLevel(workload.workPlanned, threshold);
   const upcoming = day >= today();
   const isToday = day === today();

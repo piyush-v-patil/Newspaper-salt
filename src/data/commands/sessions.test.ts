@@ -273,3 +273,17 @@ describe('turning an event into a task', () => {
     expect((await db.events.get(event.id))?.title).toBe('Prep slides');
   });
 });
+
+describe('channel hours', () => {
+  it('auto-schedules a task within its channel’s hours instead of working hours', async () => {
+    const personal = (await db.channels.toArray()).find((c) => c.name === 'personal')!;
+    await db.channels.update(personal.id, { hours: { startMin: h(18), endMin: h(21) } });
+    const errand = await createTask({ title: 'Groceries', plannedMin: 45, channelId: personal.id });
+    await autoScheduleTask(errand.id);
+    expect(await sessionsOf(errand.id)).toEqual([[DAY, h(18), h(18, 45)]]);
+    // Other tasks still use working hours.
+    const report = await createTask({ title: 'Report', plannedMin: 30 });
+    await autoScheduleTask(report.id);
+    expect(await sessionsOf(report.id)).toEqual([[DAY, h(9), h(9, 30)]]);
+  });
+});

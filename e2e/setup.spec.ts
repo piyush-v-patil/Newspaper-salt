@@ -33,6 +33,18 @@ test('first run: setup screens lead into a guided first plan, then the workspace
   await page.getByRole('button', { name: '#health' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
+  // Fixed commitments become repeating events.
+  await expect(page.getByRole('heading', { name: 'What is fixed in your week?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Skip' })).toBeVisible();
+  await page.getByRole('button', { name: 'Lunch' }).click();
+  await page.getByRole('button', { name: 'Add something else' }).click();
+  const custom = page.getByTestId('commitment').nth(1);
+  await custom.getByLabel('What').fill('Team meeting');
+  for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Friday']) await custom.getByRole('button', { name: day, exact: true }).click();
+  await custom.getByLabel('From').fill('14:00');
+  await custom.getByLabel('Until').fill('15:00');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
   await expect(page.getByRole('heading', { name: 'When do you plan your day?' })).toBeVisible();
   await page.getByLabel('Planning time').fill('08:00');
   await expect(page.getByText('Morning planning: you will plan the same day.')).toBeVisible();
@@ -57,6 +69,13 @@ test('first run: setup screens lead into a guided first plan, then the workspace
   await expect(page.getByTestId('task').filter({ hasText: 'Set up Life Of Pi' })).toBeVisible();
   await expect(page.getByTestId('task').filter({ hasText: 'Write the brief' })).toBeVisible();
 
+  // Lunch is on today's calendar, and the Thursday meeting on Thursday.
+  await expect(page.getByLabel(/^Lunch, 12:00 PM – 1:00 PM$/)).toBeVisible();
+  await page.goto('/today?date=2026-11-19');
+  await expect(page.getByLabel(/^Team meeting, 2:00 PM – 3:00 PM$/)).toBeVisible();
+  await page.goto('/today?date=2026-11-18');
+  await expect(page.getByLabel(/^Team meeting/)).toHaveCount(0);
+
   // The answers were kept: Friday is unavailable, so the calendar shades it all.
   await page.goto('/board');
   await expect(page).toHaveURL(/\/board$/);
@@ -69,6 +88,7 @@ test('planning tomorrow during setup also finishes it', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Your name').fill('Sam');
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: /Get started|Continue/ }).click();
+  await page.getByRole('button', { name: 'Skip' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('button', { name: /Plan tomorrow/ })).toContainText('Suggested');
   await page.getByRole('button', { name: /Plan tomorrow/ }).click();

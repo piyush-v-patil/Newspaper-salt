@@ -11,8 +11,9 @@ import { nowMinutes } from '@/domain/clock';
 import { formatClock, formatMinutes, shiftDay } from '@/domain/dates';
 import { relativeDayLabel } from '@/domain/dayLabels';
 import { EVENING_FROM_MIN } from '@/domain/rituals';
+import { CommitmentsEditor, isValidCommitment, saveCommitments, type Commitment } from './Commitments';
 
-const STEPS = 5;
+const STEPS = 6;
 // Monday first.
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -110,6 +111,8 @@ export function SetupPage() {
   // Step 2
   const [picked, setPicked] = useState<Set<string>>(() => new Set([...channels.map((c) => c.name), 'work', 'personal']));
   // Step 3
+  const [commitments, setCommitments] = useState<Commitment[]>([]);
+  // Step 4
   const [planningMin, setPlanningMin] = useState(settings.planningMin);
   const [remind, setRemind] = useState(settings.autoPlanning);
 
@@ -142,7 +145,12 @@ export function SetupPage() {
         for (const channelName of SUGGESTIONS[kind]) if (picked.has(channelName)) await createChannel(channelName, context.id);
       }
     }
-    if (step === 3) await updateSettings({ planningMin, autoPlanning: remind });
+    if (step === 3) {
+      await saveCommitments(commitments, current);
+      // Saved as events now; going back and on again must not add them twice.
+      setCommitments([]);
+    }
+    if (step === 4) await updateSettings({ planningMin, autoPlanning: remind });
     go(step + 1);
   }
 
@@ -151,7 +159,8 @@ export function SetupPage() {
     await navigate({ to: '/plan', search: { date: day } });
   };
 
-  const canContinue = step === 0 ? name.trim().length > 0 : step === 1 ? hoursValid : true;
+  const canContinue =
+    step === 0 ? name.trim().length > 0 : step === 1 ? hoursValid : step === 3 ? commitments.every((c) => !c.title.trim() || isValidCommitment(c)) : true;
   const greetingName = name.trim() || profile.name;
   const tomorrow = shiftDay(current, 1);
   const planEvening = useMemo(() => planningMin >= EVENING_FROM_MIN, [planningMin]);
@@ -255,6 +264,15 @@ export function SetupPage() {
           )}
 
           {step === 3 && (
+            <Screen
+              title="What is fixed in your week?"
+              lead="Add the things that happen at the same time every week, like lunch or a stand-up. They go on your calendar, and planning works around them. You can skip this."
+            >
+              <CommitmentsEditor items={commitments} onChange={setCommitments} />
+            </Screen>
+          )}
+
+          {step === 4 && (
             <Screen title="When do you plan your day?" lead="Life Of Pi will offer to plan at this time. Morning planners plan the same day; from 3 PM on, you plan tomorrow instead.">
               <Field label="Planning time" hint={planEvening ? 'Evening planning: you will plan the next day.' : 'Morning planning: you will plan the same day.'}>
                 <input type="time" aria-label="Planning time" value={toTime(planningMin)} onChange={(e) => setPlanningMin(fromTime(e.target.value) ?? planningMin)} className={`${input} w-[140px]`} />
@@ -269,7 +287,7 @@ export function SetupPage() {
             </Screen>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <Screen
               title={greetingName ? `Let’s plan your first day, ${greetingName}` : 'Let’s plan your first day'}
               lead="You will add what you want to get done, see whether it fits, and put it in order. It takes a few minutes."
@@ -306,7 +324,7 @@ export function SetupPage() {
                 <span />
               )}
               <button type="submit" disabled={!canContinue} className={primary}>
-                {step === 0 ? 'Get started' : 'Continue'}
+                {step === 0 ? 'Get started' : step === 3 && commitments.filter((c) => c.title.trim()).length === 0 ? 'Skip' : 'Continue'}
               </button>
             </div>
           )}

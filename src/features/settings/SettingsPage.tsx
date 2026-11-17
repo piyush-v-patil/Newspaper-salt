@@ -206,6 +206,36 @@ function Schedule() {
             onChange={(hours) => set({ workloadThresholdMin: Math.round(hours * 60) })}
           />
         </Row>
+        <Row label="Different limit on some days" description="For example, a shorter Friday." htmlFor="setting-limit-by-day">
+          <Toggle
+            id="setting-limit-by-day"
+            label="Different limit on some days"
+            checked={!!settings.workloadByWeekday}
+            onChange={(on) => set({ workloadByWeekday: on ? Array(7).fill(null) : undefined })}
+          />
+        </Row>
+        {settings.workloadByWeekday &&
+          WEEKDAYS.filter((d) => settings.schedule[d].available).map((d) => {
+            const own = settings.workloadByWeekday?.[d] ?? null;
+            return (
+              <Row key={d} label={WEEKDAY_NAMES[d]} description={own === null ? 'Same as the daily limit' : undefined}>
+                <NumberInput
+                  label={`${WEEKDAY_NAMES[d]} workload limit in hours`}
+                  value={(own ?? settings.workloadThresholdMin) / 60}
+                  min={0.5}
+                  max={16}
+                  step={0.5}
+                  suffix="hours"
+                  onChange={(hours) => {
+                    const next = [...(settings.workloadByWeekday ?? Array(7).fill(null))];
+                    const min = Math.round(hours * 60);
+                    next[d] = min === settings.workloadThresholdMin ? null : min;
+                    set({ workloadByWeekday: next });
+                  }}
+                />
+              </Row>
+            );
+          })}
       </Group>
     </>
   );

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatMinutes, isDay, longDayLabel, shiftDay } from './dates';
 import { compareKeys, keyAtEdge, keyBetween } from './ordering';
+import { workloadLimitFor } from './workload';
 
 describe('days', () => {
   it('shifts across month and year boundaries', () => {
@@ -38,5 +39,14 @@ describe('ordering', () => {
     const bottom = keyAtEdge([a], 'bottom');
     const mid = keyBetween(a, bottom);
     expect([bottom, mid, a, top].sort(compareKeys)).toEqual([top, a, mid, bottom]);
+  });
+});
+
+describe('workload limit per weekday', () => {
+  it('uses the weekday’s own limit when it has one', () => {
+    const settings = { workloadThresholdMin: 330, workloadByWeekday: [null, null, null, null, null, 240, null] };
+    expect(workloadLimitFor(settings, '2026-11-20')).toBe(240); // Friday
+    expect(workloadLimitFor(settings, '2026-11-19')).toBe(330);
+    expect(workloadLimitFor({ workloadThresholdMin: 330 }, '2026-11-20')).toBe(330);
   });
 });

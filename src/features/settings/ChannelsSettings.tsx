@@ -1,11 +1,12 @@
-import { Trash2 } from 'lucide-react';
+import { Clock, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CHANNEL_COLORS, createChannel, createContext, deleteContext, updateChannel, updateContext } from '@/data/commands/channels';
-import { useChannelMap, useContexts } from '@/data/ReferenceData';
+import { useChannelMap, useContexts, useSettings } from '@/data/ReferenceData';
+import { formatClock } from '@/domain/dates';
 import type { Channel, Context, Id } from '@/data/types';
 import { compareKeys } from '@/domain/ordering';
 import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/ui/Popover';
-import { Toggle } from './controls';
+import { TimeInput, Toggle } from './controls';
 
 function ColorPicker({ channel }: { channel: Channel }) {
   const [open, setOpen] = useState(false);
@@ -38,6 +39,54 @@ function ColorPicker({ channel }: { channel: Channel }) {
   );
 }
 
+/** Hours this channel's tasks are auto-scheduled in; "Any time" means working hours. */
+function HoursPicker({ channel }: { channel: Channel }) {
+  const { timeFormat } = useSettings();
+  const [open, setOpen] = useState(false);
+  // Shown straight away; the saved value catches up a moment later.
+  const [pending, setPending] = useState<{ value: Channel['hours'] } | null>(null);
+  const hours = (pending ? pending.value : channel.hours) ?? null;
+  const set = (next: Channel['hours']) => {
+    setPending({ value: next });
+    void updateChannel(channel.id, { hours: next }).finally(() => setPending(null));
+  };
+  return (
+    <PopoverRoot open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Hours of #${channel.name}`}
+          className={`flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] ${hours ? 'bg-accent-soft text-accent' : 'text-ink-3 hover:bg-hover'}`}
+        >
+          <Clock size={12} />
+          {hours ? `${formatClock(hours.startMin, timeFormat)} – ${formatClock(hours.endMin, timeFormat)}` : 'Work hours'}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent label="Channel hours">
+        <div className="flex w-[260px] flex-col gap-2.5 p-3 text-[13px]">
+          <p className="text-[12.5px] leading-relaxed text-ink-3">When you auto-schedule a #{channel.name} task, it goes in these hours instead of your working hours.</p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={hours !== null}
+              onChange={(e) => set(e.target.checked ? { startMin: 18 * 60, endMin: 21 * 60 } : null)}
+              className="h-4 w-4 accent-[var(--accent)]"
+            />
+            Own hours
+          </label>
+          {hours && (
+            <div className="flex items-center gap-1.5">
+              <TimeInput label={`#${channel.name} from`} value={hours.startMin} onChange={(startMin) => startMin < hours.endMin && set({ ...hours, startMin })} />
+              <span className="text-ink-3">–</span>
+              <TimeInput label={`#${channel.name} until`} value={hours.endMin} onChange={(endMin) => endMin > hours.startMin && set({ ...hours, endMin })} />
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </PopoverRoot>
+  );
+}
+
 function ChannelRow({ channel, contexts }: { channel: Channel; contexts: Context[] }) {
   return (
     <li data-testid="channel-row" className={`flex items-center gap-2 py-1.5 ${channel.enabled ? '' : 'opacity-55'}`}>
@@ -64,6 +113,7 @@ function ChannelRow({ channel, contexts }: { channel: Channel; contexts: Context
         ))}
         <option value="">No context</option>
       </select>
+      <HoursPicker channel={channel} />
       <button
         type="button"
         aria-pressed={channel.isDefault}

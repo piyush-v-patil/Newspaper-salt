@@ -22,6 +22,12 @@ export function workingWindow(settings: Settings, day: Day): Interval {
   return hours?.available ? { startMin: hours.startMin, endMin: hours.endMin } : { startMin: 0, endMin: 0 };
 }
 
+/** Where a task may be auto-scheduled: its channel's hours if the channel has them, else working hours. */
+async function windowFor(task: Task, settings: Settings, day: Day): Promise<Interval> {
+  const channel = task.channelId ? await db.channels.get(task.channelId) : undefined;
+  return channel?.hours ? { startMin: channel.hours.startMin, endMin: channel.hours.endMin } : workingWindow(settings, day);
+}
+
 /** What is already on a day: events that block time, and the sessions of tasks still in play. */
 async function dayState(day: Day) {
   const events = (await db.events.where('day').equals(day).toArray()).filter((e) => e.blocksTime);
@@ -140,7 +146,7 @@ async function findRoom(task: Task, day: Day, settings: Settings, allowSplit: bo
   return autoSchedule({
     durationMin: await nextSessionLength(task, settings),
     busy: [...events, ...sessions],
-    window: workingWindow(settings, day),
+    window: await windowFor(task, settings, day),
     notBefore: day === current ? nowMinutes() : 0,
     gap: settings.autoScheduleGapMin,
     allowSplit,
@@ -172,7 +178,7 @@ export const scheduleTaskAnyway = command(async (taskId: Id): Promise<void> => {
   const block = scheduleAnyway(
     await nextSessionLength(task, settings),
     [...events, ...sessions],
-    workingWindow(settings, day),
+    await windowFor(task, settings, day),
     day === today() ? nowMinutes() : 0,
   );
   if (block) await addBlocks(task, day, [block], 'Add to calendar');

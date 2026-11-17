@@ -136,6 +136,8 @@ export interface Channel {
   isDefault: boolean;
   enabled: boolean;
   order: string;
+  /** Tasks in this channel are auto-scheduled only within these hours, every day. */
+  hours?: { startMin: number; endMin: number } | null;
 }
 
 export interface BacklogFolder {
@@ -209,6 +211,8 @@ export interface Settings {
   newTaskPosition: ListEdge;
   rolloverPosition: ListEdge;
   workloadThresholdMin: number;
+  /** A different limit on some weekdays (index 0 is Sunday); null or missing means the daily limit. */
+  workloadByWeekday?: (number | null)[];
   countPlannedAsActual: boolean;
   /** Index 0 is Sunday. */
   schedule: DaySchedule[];
