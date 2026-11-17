@@ -8,7 +8,7 @@ describe('command palette matching', () => {
     expect(find('board')).toEqual(['board']);
     expect(find('week plan')).toContain('weekly-plan');
     expect(find('backup')).toEqual(['settings-data']);
-    expect(find('dark')).toEqual(['dark']);
+    expect(find('dark mode')).toEqual(['dark']);
     expect(find('sett cha')).toEqual(['settings-channels']);
   });
 

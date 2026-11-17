@@ -103,3 +103,19 @@ test('on a narrow window the navigation becomes a drawer and panels open over th
   await expect(page.getByRole('complementary')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
 });
+
+test('a colour theme can be picked for light and for dark, and it sticks', async ({ page }) => {
+  await page.goto('/settings?section=general');
+  const html = page.locator('html');
+  await page.getByRole('radiogroup', { name: 'Dark theme' }).getByRole('radio', { name: 'Midnight' }).click();
+  // Picking a dark theme shows it.
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await expect(html).toHaveCSS('--canvas', '#0f1524');
+  await page.getByRole('radiogroup', { name: 'Light theme' }).getByRole('radio', { name: 'Paper' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await expect(html).toHaveCSS('--canvas', '#f6f3ee');
+  await page.reload();
+  await expect(html).toHaveCSS('--canvas', '#f6f3ee');
+  await page.keyboard.press('Shift+L');
+  await expect(html).toHaveCSS('--canvas', '#0f1524');
+});

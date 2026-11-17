@@ -195,6 +195,10 @@ export interface DaySchedule {
 
 export interface Settings {
   darkMode: DarkMode;
+  /** Colour theme used in light mode (see app/themes.ts). */
+  lightTheme: string;
+  /** Colour theme used in dark mode. */
+  darkTheme: string;
   timeFormat: '12h' | '24h';
   weekStartsOn: 0 | 1;
   defaultView: DefaultView;

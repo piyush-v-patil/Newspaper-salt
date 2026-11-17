@@ -104,6 +104,8 @@ export function useTaskShortcuts(): void {
 
       switch (e.key) {
         case ' ':
+          // Shift+Space is "jump to today", not the timer.
+          if (e.shiftKey) return;
           // Space starts or pauses the timer; starting one enters focus mode unless that is turned off.
           return act(async () => {
             const started = await toggleTaskTimer(id);

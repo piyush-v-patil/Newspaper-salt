@@ -130,8 +130,8 @@ export function TaskCardBody({ task }: { task: Task }) {
       <div className="flex min-h-5 items-center justify-between gap-2">
         {scheduled ? (
           <span
-            className="tabular flex h-5 items-center rounded px-1.5 text-[11.5px] font-medium text-ink"
-            style={{ background: `color-mix(in srgb, ${channel?.color ?? 'var(--ink-3)'} 45%, var(--surface))` }}
+            className="time-pill tabular flex h-5 items-center rounded px-1.5 text-[11.5px]"
+            style={{ '--tag': channel?.color ?? 'var(--ink-3)' } as React.CSSProperties}
             title="Scheduled on the calendar"
           >
             {formatClock(scheduled.startMin, timeFormat).toLowerCase()}

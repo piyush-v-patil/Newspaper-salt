@@ -12,6 +12,7 @@ import { platform } from '@/platform';
 import { ChannelsSettings } from './ChannelsSettings';
 import { Group, NumberInput, Row, Select, TimeInput, Toggle } from './controls';
 import { DataSettings } from './DataSettings';
+import { ThemePicker } from './ThemePicker';
 
 export const SETTINGS_SECTIONS = [
   { id: 'general', label: 'General' },
@@ -84,6 +85,7 @@ function General() {
             onChange={(darkMode) => set({ darkMode })}
           />
         </Row>
+        <ThemePicker />
         <Row label="Time format">
           <Select
             label="Time format"

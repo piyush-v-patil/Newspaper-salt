@@ -44,6 +44,7 @@ export const COMMANDS: PaletteCommand[] = [
   { id: 'break', label: 'Take a break', group: 'Actions', hint: 'K', keywords: 'pause rest', run: { kind: 'action', action: 'break' } },
   { id: 'undo', label: 'Undo', group: 'Actions', hint: 'Ctrl Z', run: { kind: 'action', action: 'undo' } },
   { id: 'dark', label: 'Switch light or dark mode', group: 'Actions', hint: 'Shift L', keywords: 'theme appearance night', run: { kind: 'action', action: 'dark-mode' } },
+  { id: 'themes', label: 'Change colour theme', group: 'Actions', keywords: 'theme color colours appearance palette light dark', run: { kind: 'navigate', to: '/settings', search: { section: 'general' } } },
   { id: 'left', label: 'Show or hide the left panel', group: 'Actions', hint: '<', keywords: 'navigation sidebar', run: { kind: 'action', action: 'left-panel' } },
   { id: 'right', label: 'Show or hide the right panel', group: 'Actions', hint: '>', keywords: 'sidebar', run: { kind: 'action', action: 'right-panel' } },
   { id: 'panel-calendar', label: 'Open the calendar panel', group: 'Actions', hint: 'Shift C', run: { kind: 'panel', panel: 'calendar' } },

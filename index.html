@@ -10,6 +10,8 @@
         var m = localStorage.getItem('pi-theme') || 'system';
         var dark = m === 'on' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        var vars = JSON.parse(localStorage.getItem(dark ? 'pi-theme-dark' : 'pi-theme-light') || '{}');
+        for (var k in vars) document.documentElement.style.setProperty(k, vars[k]);
       } catch (e) {}
     </script>
   </head>
