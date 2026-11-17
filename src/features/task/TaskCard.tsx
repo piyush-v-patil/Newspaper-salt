@@ -4,7 +4,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { CalendarDays, Clock, Flag, Repeat, Target } from 'lucide-react';
 import { autoScheduleTask } from '@/data/commands/sessions';
 import { useUi } from '@/app/uiStore';
-import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
+import { setBacklogPriority, setChannel, setDailyPriority, setDueDay, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
+import { dueLabel } from '@/domain/dayLabels';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
 import { PLANNING_CARD, WEEKLY_PLANNING_CARD, WEEKLY_REVIEW_CARD } from '@/data/commands/days';
@@ -20,7 +21,7 @@ import { formatClock, formatMinutes, toDay } from '@/domain/dates';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
 import { useTaskData } from './TaskData';
-import { BacklogPriorityPicker, ChannelPicker, DatePicker, ObjectivePicker, PriorityPicker, TimePicker } from './pickers/pickers';
+import { BacklogPriorityPicker, ChannelPicker, DatePicker, DueDatePicker, ObjectivePicker, PriorityPicker, TimePicker } from './pickers/pickers';
 import { PRIORITY_LABELS } from './pickers/options';
 import { useTaskFocus, type TaskActionKind } from './taskFocus';
 import { useOpenTask } from './useOpenTask';
@@ -218,6 +219,18 @@ export function TaskCardBody({ task }: { task: Task }) {
             </span>
           )}
           {rollover}
+          {task.dueDay && (
+            <button
+              type="button"
+              onClick={open('due')}
+              title="Due date"
+              className={`tabular shrink-0 rounded px-1.5 py-px text-[11px] font-medium ${
+                !done && task.dueDay <= today() ? 'bg-over/12 text-over' : 'bg-hover text-ink-2'
+              }`}
+            >
+              {dueLabel(task.dueDay, today())}
+            </button>
+          )}
         </span>
         {channel && (
           <button type="button" onClick={open('channel')} aria-label={`Channel ${channel.name}`} className="flex min-w-0 items-center gap-0.5 rounded text-[12.5px] text-ink-2 hover:text-ink">
@@ -239,6 +252,7 @@ const ACTION_LABEL: Record<TaskActionKind, string> = {
   date: 'Move to',
   priority: 'Priority',
   objective: 'Weekly objective',
+  due: 'Due date',
 };
 
 function ActionPicker({ task, kind, onDone }: { task: Task; kind: TaskActionKind; onDone: () => void }) {
@@ -253,6 +267,8 @@ function ActionPicker({ task, kind, onDone }: { task: Task; kind: TaskActionKind
       return <ChannelPicker value={task.channelId} onPick={(id) => then(setChannel(task.id, id))} />;
     case 'date':
       return <DatePicker onPick={(day) => then(moveTask(task.id, day))} />;
+    case 'due':
+      return <DueDatePicker value={task.dueDay ?? null} onPick={(day) => then(setDueDay(task.id, day))} />;
     case 'objective':
       return <ObjectivePicker value={task.objectiveId} onPick={(id) => then(linkTask(task.id, id))} />;
     case 'priority':

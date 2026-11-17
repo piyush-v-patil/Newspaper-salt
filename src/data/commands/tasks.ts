@@ -1,6 +1,6 @@
 import { now, nowMinutes, today } from '@/domain/clock';
 import { compareKeys, keyAtEdge, safeKeyBetween } from '@/domain/ordering';
-import { shiftDay } from '@/domain/dates';
+import { shiftDay, type Day } from '@/domain/dates';
 import { pullForward, snap, SNAP_MIN } from '@/domain/scheduling';
 import { command, db, getSettings } from '../db';
 import {
@@ -263,6 +263,10 @@ export const setDailyPriority = command((id: Id, dailyPriority: DailyPriority): 
 /** Backlog priority is separate from daily priority and stays until changed. */
 export const setBacklogPriority = command((id: Id, backlogPriority: BacklogPriority): Promise<void> =>
   patchTask(id, { backlogPriority }, 'Set priority'),
+);
+
+export const setDueDay = command((id: Id, dueDay: Day | null): Promise<void> =>
+  patchTask(id, { dueDay, edited: true }, dueDay ? 'Set due date' : 'Clear due date'),
 );
 
 export const setBacklogFolder = command((id: Id, backlogFolderId: Id | null): Promise<void> =>

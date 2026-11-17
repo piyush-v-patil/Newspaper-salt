@@ -1,7 +1,7 @@
 import { normalizeChannelName } from '@/data/commands/channels';
 import { BACKLOG, type Channel, type Context, type DailyPriority, type Id, type TaskDay } from '@/data/types';
 import { formatMinutes, shiftDay, type Day } from '@/domain/dates';
-import { nextWeekStart, shortDate, weekdayName } from '@/domain/dayLabels';
+import { nextWeekStart, parseTypedDay, shortDate, weekdayName } from '@/domain/dayLabels';
 import { DURATION_PRESETS, durationLabel, parseDuration } from '@/domain/duration';
 
 export interface Option<T> {
@@ -59,8 +59,35 @@ export function dateOptions(query: string, today: Day, weekStartsOn: 0 | 1): Opt
   const nextWeek = nextWeekStart(today, weekStartsOn);
   options.push({ key: 'next-week', label: 'Next week', value: nextWeek, hint: shortDate(nextWeek) });
   options.push({ key: BACKLOG, label: 'Backlog', value: BACKLOG, hint: 'No date' });
+  return withTypedDay(options, query, today);
+}
+
+/** Filters by name, and offers a typed date such as "dec 3" first. */
+function withTypedDay<T>(options: Option<T | Day>[], query: string, today: Day): Option<T | Day>[] {
   const q = query.trim().toLowerCase();
-  return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+  if (!q) return options;
+  const typed = parseTypedDay(q, today);
+  const matching = options.filter((o) => o.label.toLowerCase().includes(q));
+  if (typed && !matching.some((o) => o.value === typed)) {
+    return [{ key: `typed-${typed}`, label: weekdayName(typed), value: typed, hint: shortDate(typed) }, ...matching];
+  }
+  return matching;
+}
+
+/** Due date choices: the coming days, next week, a typed date, or none. */
+export function dueOptions(query: string, today: Day, weekStartsOn: 0 | 1, current: Day | null): Option<Day | null>[] {
+  const options: Option<Day | null>[] = [
+    { key: 'today', label: 'Today', value: today, hint: shortDate(today) },
+    { key: 'tomorrow', label: 'Tomorrow', value: shiftDay(today, 1), hint: shortDate(shiftDay(today, 1)) },
+  ];
+  for (let offset = 2; offset <= 6; offset++) {
+    const day = shiftDay(today, offset);
+    options.push({ key: day, label: weekdayName(day), value: day, hint: shortDate(day) });
+  }
+  const nextWeek = nextWeekStart(today, weekStartsOn);
+  options.push({ key: 'next-week', label: 'Next week', value: nextWeek, hint: shortDate(nextWeek) });
+  if (current) options.push({ key: 'none', label: 'No due date', value: null });
+  return withTypedDay(options, query, today);
 }
 
 export const PRIORITY_LABELS: Record<DailyPriority, string> = {

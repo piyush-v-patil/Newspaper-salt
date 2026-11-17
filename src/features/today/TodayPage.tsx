@@ -12,6 +12,7 @@ import { useLayout } from '@/app/useLayout';
 import { TodayObjectives } from './TodayObjectives';
 import { useDayKeys } from '@/features/common/useDayKeys';
 import { ArchiveNotice } from '@/features/lists/ArchiveNotice';
+import { DueNotice } from './DueNotice';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
 import { TaskList, useTaskLists } from '@/features/task/TaskDnd';
 import { WorkloadCounter } from '@/features/task/WorkloadCounter';
@@ -63,6 +64,7 @@ export function TodayPage({ date }: { date?: Day }) {
             )}
             <TaskList listId={day} tasks={ordered[day] ?? []} />
             <WorkedOnCards items={worked.get(day) ?? []} />
+            {day === current && <DueNotice day={day} />}
             {day === current && <ArchiveNotice day={day} />}
           </section>
         </div>

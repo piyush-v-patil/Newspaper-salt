@@ -218,3 +218,16 @@ export function useCurrentFocusTask(): Task | null {
     }, []) ?? null
   );
 }
+
+/** Open tasks due on or before `day` that are planned for some other day, or for none. */
+export function useDueElsewhere(day: Day): Task[] {
+  return (
+    useLiveQuery(
+      async () =>
+        (await db.tasks.where('state').equals('active').filter((t) => !!t.dueDay && t.dueDay <= day && t.day !== day && t.completedAt === null).toArray()).sort(
+          (a, b) => (a.dueDay! < b.dueDay! ? -1 : a.dueDay! > b.dueDay! ? 1 : 0),
+        ),
+      [day],
+    ) ?? []
+  );
+}

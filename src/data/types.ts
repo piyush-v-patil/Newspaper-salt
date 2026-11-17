@@ -25,6 +25,8 @@ export interface Task {
   backlogBucket: BacklogBucket;
   backlogFolderId: Id | null;
   objectiveId: Id | null;
+  /** When it has to be done by. Separate from the day it is planned for. */
+  dueDay?: Day | null;
   completedAt: number | null;
   completedDay: Day | null;
   /** Consecutive days this task has rolled over without activity. */

@@ -6,7 +6,8 @@ import { BACKLOG_PRIORITIES } from '@/domain/backlog';
 import { today } from '@/domain/clock';
 import { weekStartOf } from '@/domain/weeks';
 import { PickerPanel } from './PickerPanel';
-import { channelOptions, dateOptions, priorityOptions, timeOptions, type ChannelChoice } from './options';
+import { channelOptions, dateOptions, dueOptions, priorityOptions, timeOptions, type ChannelChoice } from './options';
+import type { Day } from '@/domain/dates';
 
 interface TimePickerProps {
   value: number | null;
@@ -42,7 +43,19 @@ export function ChannelPicker({ value, onPick }: { value: Id | null; onPick: (ch
 export function DatePicker({ onPick }: { onPick: (day: TaskDay) => void }) {
   const weekStartsOn = useSettings().weekStartsOn;
   return (
-    <PickerPanel label="Date" placeholder="Move to…" getOptions={(q) => dateOptions(q, today(), weekStartsOn)} onSelect={onPick} />
+    <PickerPanel label="Date" placeholder="Move to… (e.g. dec 3)" getOptions={(q) => dateOptions(q, today(), weekStartsOn)} onSelect={onPick} />
+  );
+}
+
+export function DueDatePicker({ value, onPick }: { value: Day | null; onPick: (day: Day | null) => void }) {
+  const weekStartsOn = useSettings().weekStartsOn;
+  return (
+    <PickerPanel
+      label="Due date"
+      placeholder="Due by… (e.g. dec 3)"
+      getOptions={(q) => dueOptions(q, today(), weekStartsOn, value)}
+      onSelect={onPick}
+    />
   );
 }
 

@@ -10,6 +10,7 @@ import {
   renameTask,
   setChannel,
   setDailyPriority,
+  setDueDay,
   setPlannedTime,
   setTaskCompleted,
 } from '@/data/commands/tasks';
@@ -83,6 +84,7 @@ function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
           onPlanned={(m) => void setPlannedTime(task.id, m)}
           onChannel={(id) => void setChannel(task.id, id)}
           onPriority={(p) => void setDailyPriority(task.id, p)}
+          due={{ value: task.dueDay ?? null, onPick: (day) => void setDueDay(task.id, day) }}
           />
           <ActualChip task={task} />
         </div>
