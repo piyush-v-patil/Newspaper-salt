@@ -204,3 +204,25 @@ test('an event can be turned into a timeboxed task', async ({ page }) => {
   await expect(page.getByTestId('event')).toHaveCount(1);
   await expect(page.getByTestId('task')).toHaveCount(0);
 });
+
+test('the month range shows each day’s items and opens a day on click', async ({ page }) => {
+  await openAt(page, '08:00');
+  await page.keyboard.press('a');
+  await page.keyboard.type('Prep workshop @fri');
+  await expect(page.getByRole('option', { name: /Friday/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.keyboard.press('j');
+  await page.getByRole('button', { name: 'Month' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('November 2026');
+  const friday = page.locator('[data-month-day="2026-11-20"]');
+  await expect(friday).toContainText('Prep workshop');
+
+  await page.getByRole('button', { name: 'Next day' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('December 2026');
+  await page.getByRole('button', { name: 'Back to today' }).click();
+  await friday.click();
+  await expect(page.locator('[data-cal-day]')).toHaveCount(1);
+  await expect(page.locator('[data-cal-day="2026-11-20"]')).toHaveCount(1);
+});

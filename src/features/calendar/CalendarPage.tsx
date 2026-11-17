@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useToday } from '@/app/useToday';
-import { addDays, startOfWeek } from 'date-fns';
+import { addDays, addMonths, startOfWeek } from 'date-fns';
 import { useEffect, useMemo } from 'react';
 import { useUi, type CalendarSpan } from '@/app/uiStore';
 import { useSettings } from '@/data/ReferenceData';
@@ -8,12 +8,14 @@ import { fromDay, shiftDay, toDay, type Day } from '@/domain/dates';
 import { monthLabel } from '@/domain/dayLabels';
 import { ViewHeader } from '@/features/common/ViewHeader';
 import { useDayKeys } from '@/features/common/useDayKeys';
+import { MonthGrid } from './MonthGrid';
 import { TimeGrid } from './TimeGrid';
 
 const SPANS: { value: CalendarSpan; label: string; days: number }[] = [
   { value: 'day', label: 'Day', days: 1 },
   { value: '3day', label: '3 days', days: 3 },
   { value: 'week', label: 'Week', days: 7 },
+  { value: 'month', label: 'Month', days: 7 },
 ];
 
 /** The calendar in the centre, with the day's tasks in the right panel to drag from. */
@@ -40,16 +42,17 @@ export function CalendarPage({ date }: { date?: Day }) {
   }, [focus, setFocusedDay]);
 
   const go = (next: Day) => void navigate({ to: '/calendar', search: next === current ? {} : { date: next } });
-  const step = (direction: number) => go(shiftDay(anchor, direction * length));
+  const step = (direction: number) => go(span === 'month' ? toDay(addMonths(fromDay(anchor), direction)) : shiftDay(anchor, direction * length));
+  const inView = span === 'month' ? anchor.slice(0, 7) === current.slice(0, 7) : days.includes(current);
   useDayKeys({ previous: () => step(-1), next: () => step(1), today: () => go(current) });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ViewHeader
-        title={monthLabel(days[0])}
+        title={monthLabel(span === 'month' ? anchor : days[0])}
         onPrevious={() => step(-1)}
         onNext={() => step(1)}
-        onBackToToday={days.includes(current) ? undefined : () => go(current)}
+        onBackToToday={inView ? undefined : () => go(current)}
       >
         <div role="group" aria-label="Calendar range" className="flex h-7 items-center rounded-md border border-line p-0.5">
           {SPANS.map((s) => (
@@ -65,7 +68,18 @@ export function CalendarPage({ date }: { date?: Day }) {
           ))}
         </div>
       </ViewHeader>
-      <TimeGrid days={days} showHeader />
+      {span === 'month' ? (
+        <MonthGrid
+          anchor={anchor}
+          today={current}
+          onOpenDay={(day) => {
+            setSpan('day');
+            go(day);
+          }}
+        />
+      ) : (
+        <TimeGrid days={days} showHeader />
+      )}
     </div>
   );
 }

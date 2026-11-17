@@ -6,7 +6,7 @@ import type { TaskFilter } from '@/domain/filter';
 
 export type RightPanelKind = 'calendar' | 'objectives' | 'backlog' | 'archive' | 'search' | 'trash';
 
-export type CalendarSpan = 'day' | '3day' | 'week';
+export type CalendarSpan = 'day' | '3day' | 'week' | 'month';
 /** What the workload counter shows: every task, work tasks only, or actual against planned. */
 export type WorkloadMode = 'all' | 'work' | 'actual';
 
