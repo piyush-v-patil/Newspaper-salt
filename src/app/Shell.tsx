@@ -34,7 +34,7 @@ function ShellBody() {
   useDayChange();
   // Focus mode clears the panels away; the navigation still slides in from the left edge.
   // The same goes for the rituals, which bring their own columns.
-  const focusing = useRouterState({ select: (s) => /^\/(focus|plan|shutdown)/.test(s.location.pathname) });
+  const focusing = useRouterState({ select: (s) => /^\/(focus|plan|shutdown|weekly)/.test(s.location.pathname) });
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-canvas text-ink">

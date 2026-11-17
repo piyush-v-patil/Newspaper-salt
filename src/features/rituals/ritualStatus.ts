@@ -2,11 +2,12 @@ import { create } from 'zustand';
 import { useNow } from '@/app/useNow';
 import { useToday } from '@/app/useToday';
 import { workingWindow } from '@/data/commands/sessions';
-import { useDayRecord } from '@/data/queries';
+import { useDayRecord, useWeekRecord } from '@/data/queries';
 import { useSettings } from '@/data/ReferenceData';
 import { nowMinutes } from '@/domain/clock';
-import type { Day } from '@/domain/dates';
+import { weekdayOf, type Day } from '@/domain/dates';
 import { isPlanningDue, isShutdownDue, planningTarget } from '@/domain/rituals';
+import { planningWeek, reviewWeek, weekStartOf } from '@/domain/weeks';
 
 export type RitualState = 'due' | 'done' | null;
 
@@ -45,4 +46,43 @@ export function useRitualStatus(): { plan: RitualState; shutdown: RitualState; p
         ? 'due'
         : null;
   return { plan, shutdown, planDay, today };
+}
+
+/** Position of a weekday within the week: 0 for the first day of the week. */
+const weekIndex = (weekday: number, weekStartsOn: 0 | 1) => (weekday - weekStartsOn + 7) % 7;
+
+/** Where the weekly rituals stand: due from their set day and time until done. */
+export function useWeeklyStatus(): { plan: RitualState; review: RitualState } {
+  const settings = useSettings();
+  const today = useToday();
+  useNow(60_000);
+  const planWeek = planningWeek(today, settings.weekStartsOn);
+  const thisWeek = weekStartOf(today, settings.weekStartsOn);
+  const reviewedWeek = reviewWeek(today, settings.weekStartsOn);
+  const planRecord = useWeekRecord(planWeek);
+  const reviewRecord = useWeekRecord(reviewedWeek);
+
+  const todayIndex = weekIndex(weekdayOf(today), settings.weekStartsOn);
+  const reached = (at: { weekday: number; min: number }) => {
+    const index = weekIndex(at.weekday, settings.weekStartsOn);
+    return todayIndex > index || (todayIndex === index && nowMinutes() >= at.min);
+  };
+
+  const plan: RitualState = !planRecord
+    ? null
+    : planRecord.planStatus === 'done'
+      ? 'done'
+      : // Only this week's plan can be overdue; next week's is not due yet.
+        planWeek === thisWeek && reached(settings.weeklyPlan)
+        ? 'due'
+        : null;
+  const review: RitualState = !reviewRecord
+    ? null
+    : reviewRecord.reviewStatus === 'done'
+      ? 'done'
+      : // Last week's review stays due until done; this week's becomes due at its set time.
+        reviewedWeek !== thisWeek || reached(settings.weeklyReview)
+        ? 'due'
+        : null;
+  return { plan, review };
 }

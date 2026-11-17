@@ -23,7 +23,7 @@ export function RitualPrompt() {
   const snoozes = useSnoozes();
   const running = useRunningTimer();
   const nowMs = useNow(20_000);
-  const immersive = useRouterState({ select: (s) => /^\/(focus|plan|shutdown|welcome|setup)/.test(s.location.pathname) });
+  const immersive = useRouterState({ select: (s) => /^\/(focus|plan|shutdown|weekly|welcome|setup)/.test(s.location.pathname) });
 
   const planDue = settings.autoPlanning && status.plan === 'due' && nowMs >= snoozes.planSnoozedUntil && snoozes.planSkippedFor !== status.planDay;
   const shutdownDue =

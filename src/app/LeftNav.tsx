@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useRitualStatus, type RitualState } from '@/features/rituals/ritualStatus';
+import { useRitualStatus, useWeeklyStatus, type RitualState } from '@/features/rituals/ritualStatus';
 import { Kbd } from '@/ui/Kbd';
 import { useUi } from './uiStore';
 
@@ -81,6 +81,7 @@ function Group({ title, items, states = {} }: { title?: string; items: Item[]; s
 function NavBody() {
   const toggleLeft = useUi((s) => s.toggleLeft);
   const status = useRitualStatus();
+  const weeklyStatus = useWeeklyStatus();
   return (
     <nav aria-label="Main" className="flex h-full w-[224px] flex-col bg-panel px-2.5 py-3">
       <div className="flex items-center justify-between px-2 pb-3">
@@ -97,7 +98,7 @@ function NavBody() {
       </div>
       <Group items={views} />
       <Group title="Daily rituals" items={daily} states={{ '/plan': status.plan, '/shutdown': status.shutdown }} />
-      <Group title="Weekly rituals" items={weekly} />
+      <Group title="Weekly rituals" items={weekly} states={{ '/weekly/plan': weeklyStatus.plan, '/weekly/review': weeklyStatus.review }} />
       <Group title="Lists" items={lists} />
       <div className="mt-auto">
         <NavLink item={{ to: '/settings', label: 'Settings', icon: Settings }} />

@@ -18,7 +18,7 @@ export const updateDayRecord = command(patchDay);
  * Leaves a finished card on the day to show the ritual was done, as a record
  * and a way back to it. One per ritual per day.
  */
-async function addRitualCard(day: Day, title: string): Promise<void> {
+export async function addRitualCard(day: Day, title: string): Promise<void> {
   const onDay = await db.tasks.where('[state+day]').equals(['active', day]).toArray();
   if (onDay.some((t) => t.kind === 'ritual' && t.title === title)) return;
   const stamp = now();
@@ -53,6 +53,8 @@ async function addRitualCard(day: Day, title: string): Promise<void> {
 
 export const PLANNING_CARD = 'Daily planning';
 export const SHUTDOWN_CARD = 'Daily shutdown';
+export const WEEKLY_PLANNING_CARD = 'Weekly planning';
+export const WEEKLY_REVIEW_CARD = 'Weekly review';
 
 /** Marks the day's plan as done. */
 export const finishPlanning = command(async (day: Day, patch: Partial<DayRecord> = {}): Promise<void> => {

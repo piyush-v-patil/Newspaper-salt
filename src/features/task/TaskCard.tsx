@@ -5,7 +5,7 @@ import { Clock, Flag, Target } from 'lucide-react';
 import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
-import { PLANNING_CARD } from '@/data/commands/days';
+import { PLANNING_CARD, WEEKLY_PLANNING_CARD, WEEKLY_REVIEW_CARD } from '@/data/commands/days';
 import { linkTask } from '@/data/commands/objectives';
 import { setActualForDay } from '@/data/commands/timer';
 import { useRunningTimer } from '@/data/queries';
@@ -223,8 +223,12 @@ export function TaskCard({ task }: { task: Task }) {
   const openTask = useOpenTask();
   const navigate = useNavigate();
   // A ritual's card is a record of it; clicking goes back to that ritual.
-  const openRitual = (card: Task) =>
-    void (card.title === PLANNING_CARD && card.day !== BACKLOG ? navigate({ to: '/plan', search: { date: card.day } }) : navigate({ to: '/shutdown' }));
+  const openRitual = (card: Task) => {
+    if (card.title === PLANNING_CARD && card.day !== BACKLOG) void navigate({ to: '/plan', search: { date: card.day } });
+    else if (card.title === WEEKLY_PLANNING_CARD) void navigate({ to: '/weekly/plan' });
+    else if (card.title === WEEKLY_REVIEW_CARD) void navigate({ to: '/weekly/review' });
+    else void navigate({ to: '/shutdown' });
+  };
 
   return (
     <PopoverRoot open={actionKind !== null} onOpenChange={(next) => !next && closeAction()}>

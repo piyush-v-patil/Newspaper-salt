@@ -89,3 +89,57 @@ test('an unfinished objective can be carried into the next week', async ({ page 
   await page.getByRole('button', { name: 'Back to this week' }).click();
   await expect(page.getByTestId('objective')).toHaveCount(0);
 });
+
+test('weekly planning sets objectives and records a plan; weekly review reports on the week', async ({ page }) => {
+  await openAt(page, '2026-11-16T08:30:00'); // Monday
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  const weeklyPlan = nav.getByRole('link', { name: /Plan/ }).nth(1);
+  await expect(weeklyPlan).toContainText('Start');
+  await weeklyPlan.click();
+  await expect(page).toHaveURL(/\/weekly\/plan$/);
+  await expect(page.getByText('Nov 16 – 22').first()).toBeVisible();
+
+  await page.getByLabel('Add objective').fill('Ship v2 pricing');
+  await page.getByLabel('Add objective').press('Enter');
+  const add = page.getByLabel('Add task to Ship v2 pricing');
+  await add.fill('Draft the pricing page');
+  await add.press('Enter');
+  await add.press('Escape');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByLabel('Summary')).toHaveValue(/Objectives\n- Ship v2 pricing/);
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(card(page, 'Weekly planning')).toBeVisible();
+  await expect(weeklyPlan.getByLabel('Done')).toBeVisible();
+
+  // Work on the task for 50 minutes on Monday and finish it.
+  await card(page, 'Draft the pricing page').hover();
+  await page.keyboard.press(' ');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.clock.fastForward('50:00');
+  await page.keyboard.press('c');
+  await expect(page.getByRole('heading', { name: 'Done for the day' })).toBeVisible();
+
+  // Friday afternoon: the review is due and covers this week.
+  await page.clock.setSystemTime(new Date('2026-11-20T15:30:00'));
+  await page.goto('/');
+  await expect(nav).toBeVisible();
+  const weeklyReview = nav.getByRole('link', { name: /Review/ });
+  await expect(weeklyReview).toContainText('Start');
+  await weeklyReview.click();
+
+  await expect(page.getByRole('heading', { name: 'Week in review' })).toBeVisible();
+  await expect(page.getByTestId('review-objective')).toContainText('Open');
+  await expect(page.getByTestId('review-objective')).toContainText('0:50 · 1/1 tasks');
+  await page.keyboard.press('ArrowRight');
+
+  await expect(page.getByRole('heading', { name: 'What got done' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'By day' })).toContainText('Draft the pricing page');
+  await expect(page.getByTestId('day-bar').first()).toContainText('0:50');
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  await expect(page.getByLabel('Summary')).toHaveValue(/Finished 1 task and logged 0:50\./);
+  await page.getByRole('button', { name: 'Wrap up' }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(weeklyReview.getByLabel('Done')).toBeVisible();
+});

@@ -8,6 +8,7 @@ import { PlanPage } from '@/features/rituals/PlanPage';
 import { ShutdownPage } from '@/features/rituals/ShutdownPage';
 import { BacklogPage } from '@/features/lists/BacklogPage';
 import { WeekPage } from '@/features/week/WeekPage';
+import { WeeklyPlanPage, WeeklyReviewPage } from '@/features/rituals/WeeklyPages';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -78,16 +79,8 @@ const planRoute = createRoute({
 });
 const shutdownRoute = createRoute({ getParentRoute: parent, path: '/shutdown', component: ShutdownPage });
 const highlightsRoute = createRoute({ getParentRoute: parent, path: '/highlights', component: HighlightsPage });
-const weeklyPlanRoute = createRoute({
-  getParentRoute: parent,
-  path: '/weekly/plan',
-  component: () => <ComingSoon title="Weekly planning" phase={5} summary="Set this week's objectives and line up the work behind them." />,
-});
-const weeklyReviewRoute = createRoute({
-  getParentRoute: parent,
-  path: '/weekly/review',
-  component: () => <ComingSoon title="Weekly review" phase={5} summary="What got done, where the time went, and how the objectives fared." />,
-});
+const weeklyPlanRoute = createRoute({ getParentRoute: parent, path: '/weekly/plan', component: WeeklyPlanPage });
+const weeklyReviewRoute = createRoute({ getParentRoute: parent, path: '/weekly/review', component: WeeklyReviewPage });
 const backlogRoute = createRoute({ getParentRoute: parent, path: '/backlog', component: BacklogPage });
 const settingsRoute = createRoute({
   getParentRoute: parent,
