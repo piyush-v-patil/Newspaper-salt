@@ -402,3 +402,10 @@ export const bumpCounter = command(async (id: Id, by: 1 | -1): Promise<void> => 
   if (count === task.counter.count) return;
   return patchTask(id, { counter: { ...task.counter, count }, lastActivityDay: today() }, by > 0 ? 'Counted one' : 'Counted one less');
 });
+
+/** Changes part of a counter (its target or unit), reading the rest fresh so quick edits never undo each other. */
+export const updateCounter = command(async (id: Id, patch: Partial<Pick<TaskCounter, 'target' | 'unit'>>): Promise<void> => {
+  const task = await requireTask(id);
+  if (!task.counter) return;
+  return patchTask(id, { counter: { ...task.counter, ...patch }, edited: true }, 'Change counter');
+});

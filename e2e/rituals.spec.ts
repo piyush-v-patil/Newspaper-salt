@@ -153,7 +153,7 @@ test('daily shutdown reviews the day, keeps the highlights, and files them', asy
   await quickAdd(page, 'Untouched ~30', 'Half done ~1h', 'Shipped release ~1h #work');
   await card(page, 'Shipped release').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('50:00');
   await page.keyboard.press('c');
   // Focus moved to the next task, with the timer still running.
@@ -233,7 +233,7 @@ test('the rituals are offered when their time comes', async ({ page }) => {
   await quickAdd(page, 'Deep work');
   await card(page, 'Deep work').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.keyboard.press('t');
   await page.clock.setSystemTime(new Date('2026-11-17T17:05:00'));
   await page.clock.fastForward('00:30');
@@ -257,7 +257,7 @@ test('a task worked on but not finished leaves a faded copy on the day it was wo
   await quickAdd(page, 'Long report ~3h');
   await card(page, 'Long report').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('01:30:00');
   await page.keyboard.press(' ');
   await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();

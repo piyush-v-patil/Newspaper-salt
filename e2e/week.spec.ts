@@ -38,7 +38,7 @@ test('weekly objectives collect tasks, track time and progress, and link from an
   await expect(card(page, 'Draft the pricing page')).toContainText('This week');
   await card(page, 'Draft the pricing page').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('45:00');
   await page.keyboard.press(' ');
   await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
@@ -116,7 +116,7 @@ test('weekly planning sets objectives and records a plan; weekly review reports 
   // Work on the task for 50 minutes on Monday and finish it.
   await card(page, 'Draft the pricing page').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('50:00');
   await page.keyboard.press('c');
   await expect(page.getByRole('heading', { name: 'Done for the day' })).toBeVisible();

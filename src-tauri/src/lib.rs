@@ -1,3 +1,5 @@
+mod backups;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -47,7 +49,15 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
-        .invoke_handler(tauri::generate_handler![set_tray_status, show_main_window])
+        .invoke_handler(tauri::generate_handler![
+            set_tray_status,
+            show_main_window,
+            backups::backup_default_dir,
+            backups::backup_write,
+            backups::backup_list,
+            backups::backup_read,
+            backups::backup_delete
+        ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open Life Of Pi", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

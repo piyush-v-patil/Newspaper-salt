@@ -3,6 +3,26 @@
  * interface. The web build uses browser APIs or does nothing; the desktop
  * build (the Windows app) supplies native versions without touching features.
  */
+export interface BackupEntry {
+  id: string;
+  /** When it was made. */
+  at: number;
+  /** Size in bytes. */
+  size: number;
+}
+
+/** Where automatic backups are kept: files in a folder on desktop, a separate store in the browser. */
+export interface BackupStore {
+  /** The folder, for display; null in the browser. */
+  location(): Promise<string | null>;
+  /** Lets the person pick another folder; null where there is no choice. Resolves to the new folder, or null if cancelled. */
+  chooseLocation: (() => Promise<string | null>) | null;
+  list(): Promise<BackupEntry[]>;
+  write(at: number, text: string): Promise<void>;
+  read(id: string): Promise<string>;
+  remove(id: string): Promise<void>;
+}
+
 export interface Platform {
   kind: 'web' | 'desktop';
   /** Show a system notification. Resolves false if it could not be shown. */
@@ -21,4 +41,5 @@ export interface Platform {
   launchAtLogin: { get(): Promise<boolean>; set(on: boolean): Promise<void> } | null;
   /** Hands a text file to the person to save. Resolves false if they cancelled. */
   saveTextFile(fileName: string, text: string, mimeType: string): Promise<boolean>;
+  backups: BackupStore;
 }

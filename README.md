@@ -86,5 +86,7 @@ Since then: a month range on the calendar, turning an event into a task, repeati
 - **Merge** a task into another, and **sort** a day by time then priority.
 - **Counters** on tasks (applications sent, problems solved), with a target, `+`/`-` keys, and a fresh count on each day of a repeating task.
 
-Still to do: automatic backups.
+- **Automatic backups.** The Windows app saves a backup file every day (when something changed) to `Documents\Life Of Pi Backups` or a folder you choose, such as a OneDrive folder; the web app keeps daily snapshots in the browser and reminds you weekly to download a copy. A backup is also taken before any restore, import or erase. The last two weeks are kept, then one a week for two months. Settings → Your data lists them, with Back up now and Restore.
+
+Next: sign-in and sync across devices.
 

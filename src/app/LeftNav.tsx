@@ -1,3 +1,4 @@
+import { BackupReminder } from './BackupReminder';
 import { useRunningTimer } from '@/data/queries';
 import { useTaskTime } from '@/features/focus/useTaskTime';
 import { formatMinutes } from '@/domain/dates';
@@ -220,6 +221,7 @@ function NavBody() {
         ))}
         <BacklogFolders />
       </div>
+      <BackupReminder />
     </nav>
   );
 }

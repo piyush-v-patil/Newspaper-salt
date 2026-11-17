@@ -1,3 +1,4 @@
+import { browserBackups } from './browserBackups';
 import type { Platform } from './types';
 
 const baseTitle = 'Life Of Pi';
@@ -43,4 +44,6 @@ export const webPlatform: Platform = {
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
     return true;
   },
+
+  backups: browserBackups,
 };

@@ -1,5 +1,7 @@
 import { format } from 'date-fns';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { runBackup, updateBackupStatus, useBackupStatus } from '@/data/autoBackup';
+import type { BackupEntry } from '@/platform/types';
 import { backupTaskCount, exportData, parseBackup, restoreBackup, type Backup } from '@/data/backup';
 import { db } from '@/data/db';
 import { now } from '@/domain/clock';
@@ -20,7 +22,9 @@ export function DataSettings() {
   async function exportNow() {
     const stamp = now();
     const fileName = `life-of-pi-backup-${format(new Date(stamp), 'yyyy-MM-dd')}.json`;
-    setSaved(await platform.saveTextFile(fileName, await exportData(stamp), 'application/json'));
+    const done = await platform.saveTextFile(fileName, await exportData(stamp), 'application/json');
+    setSaved(done);
+    if (done) updateBackupStatus({ lastDownloadAt: stamp, reminderSnoozedUntil: null });
   }
 
   async function choose(selected: File | undefined) {
@@ -34,11 +38,14 @@ export function DataSettings() {
 
   async function replace() {
     if (!pending) return;
+    // What is here now is saved first, so a restore can itself be undone.
+    await runBackup('safety');
     await restoreBackup(pending);
     location.assign(BASE);
   }
 
   async function eraseEverything() {
+    await runBackup('safety');
     db.close();
     await db.delete();
     location.assign(BASE);
@@ -47,11 +54,15 @@ export function DataSettings() {
   return (
     <div className="flex flex-col gap-8">
       <p className="text-[13px] leading-relaxed text-ink-2">
-        Everything you add is stored on this device, in this browser. Clearing the browser’s site data deletes it. Export a backup now and then; it is the only copy anywhere else.
+        {platform.kind === 'web'
+          ? 'Everything you add is stored on this device, in this browser. Clearing the browser’s site data deletes it, so download a copy now and then.'
+          : 'Everything you add is stored on this computer. A backup is saved to a folder every day; point it at a OneDrive or Google Drive folder to keep a copy off this computer too.'}
       </p>
 
+      <AutomaticBackups onRestore={setPending} />
+
       <section className="flex flex-col gap-2">
-        <h3 className="text-[14px] font-medium">Export a backup</h3>
+        <h3 className="text-[14px] font-medium">{platform.kind === 'web' ? 'Download a copy' : 'Export a backup'}</h3>
         <p className="text-[12.5px] text-ink-3">Saves every task, note, time entry and setting to one file.</p>
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => void exportNow()} className={button}>
@@ -76,7 +87,7 @@ export function DataSettings() {
         {pending && (
           <div role="alert" className="flex flex-col gap-3 rounded-xl border border-line-strong p-4">
             <p className="text-[13.5px]">
-              This backup is from {format(new Date(pending.exportedAt), 'MMMM d, yyyy, HH:mm')} and holds {backupTaskCount(pending)} tasks. Restoring it replaces everything currently here. This cannot be undone.
+              This backup is from {format(new Date(pending.exportedAt), 'MMMM d, yyyy, HH:mm')} and holds {backupTaskCount(pending)} tasks. Restoring it replaces everything currently here; what is here now is backed up first.
             </p>
             <div className="flex gap-2">
               <button type="button" onClick={() => void replace()} className={danger}>
@@ -112,5 +123,119 @@ export function DataSettings() {
         )}
       </section>
     </div>
+  );
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+const sizeLabel = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+
+/** The daily backups: when the last ran, where they go, a way to make one now, and the list to restore from. */
+function AutomaticBackups({ onRestore }: { onRestore: (backup: Backup) => void }) {
+  const status = useBackupStatus();
+  const [list, setList] = useState<BackupEntry[] | null>(null);
+  const [folder, setFolder] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      setList((await platform.backups.list()).sort((a, b) => b.at - a.at));
+      setFolder(await platform.backups.location());
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : String(error));
+      setList([]);
+    }
+  }
+  useEffect(() => {
+    void refresh();
+  }, [status.lastSavedAt]);
+
+  async function backUpNow() {
+    setBusy(true);
+    await runBackup('manual');
+    setBusy(false);
+    await refresh();
+  }
+
+  async function restore(entry: BackupEntry) {
+    setProblem(null);
+    const result = parseBackup(await platform.backups.read(entry.id));
+    if (result.ok) onRestore(result.backup);
+    else setProblem(result.reason);
+  }
+
+  async function download(entry: BackupEntry) {
+    if (await platform.saveTextFile(entry.id, await platform.backups.read(entry.id), 'application/json')) {
+      updateBackupStatus({ lastDownloadAt: now(), reminderSnoozedUntil: null });
+    }
+  }
+
+  const stale = status.lastSavedAt !== null && now() - status.lastSavedAt > 3 * DAY;
+  return (
+    <section aria-label="Automatic backups" className="flex flex-col gap-3 rounded-xl border border-line p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h3 className="text-[14px] font-medium">Automatic backups</h3>
+          <p data-testid="backup-status" className={`text-[12.5px] ${stale || status.error ? 'text-over' : 'text-ink-3'}`}>
+            {status.lastSavedAt === null ? 'No backup yet.' : `Last backup ${format(new Date(status.lastSavedAt), 'MMM d, HH:mm')}.`}
+            {status.error && ` The last attempt failed: ${status.error}`}
+          </p>
+        </div>
+        <button type="button" disabled={busy} onClick={() => void backUpNow()} className={`${button} shrink-0 disabled:opacity-50`}>
+          {busy ? 'Backing up…' : 'Back up now'}
+        </button>
+      </div>
+      <p className="text-[12.5px] leading-relaxed text-ink-3">
+        One a day when something has changed, and one before any restore, import or erase. The last two weeks are kept, then one a week for two months.
+        {platform.kind === 'web' && ' These are kept inside this browser: they undo mistakes, but not clearing the browser’s data.'}
+      </p>
+      {folder && (
+        <div className="flex items-center gap-2 text-[12.5px]">
+          <span className="text-ink-3">Saved to</span>
+          <code className="min-w-0 truncate rounded bg-hover px-1.5 py-0.5 text-ink-2" title={folder}>
+            {folder}
+          </code>
+          {platform.backups.chooseLocation && (
+            <button
+              type="button"
+              onClick={() => void platform.backups.chooseLocation!().then(async (picked) => {
+                if (picked) await refresh();
+              })}
+              className="shrink-0 rounded px-1.5 py-0.5 text-accent hover:bg-accent-soft"
+            >
+              Change…
+            </button>
+          )}
+        </div>
+      )}
+      {problem && (
+        <p role="alert" className="text-[12.5px] text-over">
+          {problem}
+        </p>
+      )}
+      {list && list.length > 0 && (
+        <ul aria-label="Backups" className="flex max-h-[220px] flex-col overflow-y-auto rounded-lg border border-line">
+          {list.map((entry) => (
+            <li key={entry.id} data-testid="backup-entry" className="group flex items-center gap-3 border-b border-line px-3 py-1.5 text-[13px] last:border-0">
+              <span className="flex-1">{format(new Date(entry.at), 'EEE, MMM d yyyy, HH:mm')}</span>
+              <span className="tabular text-[12px] text-ink-3">{sizeLabel(entry.size)}</span>
+              {platform.kind === 'web' && (
+                <button type="button" onClick={() => void download(entry)} className="rounded px-1.5 py-0.5 text-[12px] text-ink-2 hover:bg-hover">
+                  Download
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label={`Restore the backup from ${format(new Date(entry.at), 'MMM d, HH:mm')}`}
+                onClick={() => void restore(entry)}
+                className="rounded px-1.5 py-0.5 text-[12px] text-accent hover:bg-accent-soft"
+              >
+                Restore…
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

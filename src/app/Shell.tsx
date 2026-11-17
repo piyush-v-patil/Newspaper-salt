@@ -16,6 +16,7 @@ import { LeftNav } from './LeftNav';
 import { RightPanel } from './RightPanel';
 import { UndoToast } from './UndoToast';
 import { useTheme } from './theme';
+import { useAutoBackup } from './useAutoBackup';
 import { useDayChange } from './useToday';
 import { useDesktop } from './useDesktop';
 import { useLayout } from './useLayout';
@@ -43,6 +44,7 @@ export function Shell() {
 
 function ShellBody() {
   useTheme();
+  useAutoBackup();
   useGlobalShortcuts();
   useTaskShortcuts();
   useDayChange();

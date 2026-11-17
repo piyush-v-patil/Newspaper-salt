@@ -21,7 +21,7 @@ test('Space starts a timer and enters focus mode; the time survives a pause and 
   // Focus mode clears the panels away.
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeHidden();
 
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('12:30');
   await expect(page.getByTestId('focus-timer')).toHaveText(/^12:3\d$/);
   await page.keyboard.press(' ');
@@ -43,7 +43,7 @@ test('a running timer keeps counting across a reload and shows in the focus bar'
   await quickAdd(page, 'Review designs');
   await card(page, 'Review designs').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('03:00');
   await page.keyboard.press('t');
   await expect(page.getByTestId('focus-bar-time')).toHaveText(/^3:0\d$/);
@@ -77,12 +77,12 @@ test('completing in focus mode moves to the next task, then celebrates when the 
   await expect(page.getByLabel('Task title')).toHaveValue('First');
 
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('10:00');
   await page.keyboard.press('c');
   await expect(page.getByLabel('Task title')).toHaveValue('Second');
   // The timer carries straight on with the next task.
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Complete', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Done for the day' })).toBeVisible();
@@ -120,7 +120,7 @@ test('K takes a break, and ending it resumes the timer', async ({ page }) => {
   await quickAdd(page, 'Deep work');
   await card(page, 'Deep work').hover();
   await page.keyboard.press(' ');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('20:00');
   await page.keyboard.press('t');
   const bar = page.getByRole('region', { name: 'Focus bar' });
@@ -146,10 +146,10 @@ test('a timeboxed task about to start offers to shift focus', async ({ page }) =
   await card(page, 'Inbox').hover();
   await page.keyboard.press(' ');
   await expect(page.getByLabel('Task title')).toHaveValue('Inbox');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.clock.fastForward('06:00');
   await expect(page.getByText('Standup prep starts soon. Shift focus?')).toBeVisible();
   await page.getByRole('button', { name: 'Shift focus' }).click();
   await expect(page.getByLabel('Task title')).toHaveValue('Standup prep');
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
 });

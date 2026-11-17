@@ -6,6 +6,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+import { folderBackups } from './folderBackups';
 import type { Platform } from './types';
 
 const FOCUS_BAR = 'focusbar';
@@ -91,4 +92,6 @@ export const desktopPlatform: Platform = {
     await writeTextFile(path, text);
     return true;
   },
+
+  backups: folderBackups,
 };

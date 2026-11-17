@@ -1,5 +1,5 @@
 import { Minus, Plus, Tally5, X } from 'lucide-react';
-import { bumpCounter, setCounter } from '@/data/commands/tasks';
+import { bumpCounter, setCounter, updateCounter } from '@/data/commands/tasks';
 import type { Task } from '@/data/types';
 
 const step = 'grid h-7 w-7 place-items-center rounded-md border border-line text-ink-2 hover:bg-hover hover:text-ink disabled:opacity-35';
@@ -35,7 +35,7 @@ export function CounterEditor({ task }: { task: Task }) {
           onBlur={(e) => {
             const value = e.currentTarget.value.trim();
             const target = value === '' ? null : Math.max(1, Math.min(9999, Math.round(Number(value)) || 1));
-            if (target !== counter.target) void setCounter(task.id, { ...counter, target });
+            if (target !== counter.target) void updateCounter(task.id, { target });
           }}
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           className="h-7 w-[64px] rounded-md border border-line bg-surface px-2 text-[13px] text-ink"
@@ -48,7 +48,7 @@ export function CounterEditor({ task }: { task: Task }) {
         defaultValue={counter.unit}
         onBlur={(e) => {
           const unit = e.currentTarget.value.trim();
-          if (unit !== counter.unit) void setCounter(task.id, { ...counter, unit });
+          if (unit !== counter.unit) void updateCounter(task.id, { unit });
         }}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         className="h-7 w-[150px] rounded-md border border-line bg-surface px-2 text-[13px]"
