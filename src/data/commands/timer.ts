@@ -2,7 +2,7 @@ import { now, today } from '@/domain/clock';
 import { fromDay, type Day } from '@/domain/dates';
 import { entryDay } from '@/domain/time';
 import { command, db } from '../db';
-import type { Id, RunningTimer, TimeEntry } from '../types';
+import type { Id, ParallelTimer, RunningTimer, TimeEntry } from '../types';
 import { recordUndo } from '../undo';
 
 const MINUTE = 60_000;
@@ -26,6 +26,8 @@ export async function stopRunningTimer(): Promise<void> {
 /** Stops whatever is running and starts timing a task (or one of its subtasks). Shared by the commands here and in subtasks. */
 export async function begin(taskId: Id, subtaskId: Id | null): Promise<void> {
   await stopRunningTimer();
+  // The main timer takes over a task that was running alongside.
+  await stopParallelFor(taskId);
   const entry: TimeEntry = { id: crypto.randomUUID(), taskId, subtaskId, start: now(), end: null };
   await db.timeEntries.add(entry);
   await db.meta.put({ key: 'timer', value: { entryId: entry.id, taskId, subtaskId, start: entry.start } satisfies RunningTimer });
@@ -124,4 +126,38 @@ export const addTimeEntry = command(async (taskId: Id, start: number, end: numbe
     await db.timeEntries.delete(entry.id);
   });
   return entry;
+});
+
+export async function getParallelTimers(): Promise<ParallelTimer[]> {
+  return ((await db.meta.get('parallel'))?.value as ParallelTimer[] | undefined) ?? [];
+}
+
+/** Ends the timer running alongside for a task, if there is one. Shared with task completion. */
+export async function stopParallelFor(taskId: Id): Promise<void> {
+  const list = await getParallelTimers();
+  const timer = list.find((t) => t.taskId === taskId);
+  if (!timer) return;
+  const end = now();
+  if (end - timer.start < MIN_ENTRY_MS) await db.timeEntries.delete(timer.entryId);
+  else await db.timeEntries.update(timer.entryId, { end });
+  await db.meta.put({ key: 'parallel', value: list.filter((t) => t.taskId !== taskId) });
+}
+
+/**
+ * Times a task alongside whatever else is running, or stops it if it
+ * already is. Returns whether it is now running alongside. A task that is
+ * the main timer's is left alone.
+ */
+export const toggleParallelTimer = command(async (taskId: Id): Promise<boolean> => {
+  if ((await getRunningTimer())?.taskId === taskId) return false;
+  const list = await getParallelTimers();
+  if (list.some((t) => t.taskId === taskId)) {
+    await stopParallelFor(taskId);
+    return false;
+  }
+  const entry: TimeEntry = { id: crypto.randomUUID(), taskId, subtaskId: null, start: now(), end: null };
+  await db.timeEntries.add(entry);
+  await db.meta.put({ key: 'parallel', value: [...list, { entryId: entry.id, taskId, start: entry.start } satisfies ParallelTimer] });
+  await db.tasks.update(taskId, { lastActivityDay: today(), updatedAt: now() });
+  return true;
 });

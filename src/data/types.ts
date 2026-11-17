@@ -243,6 +243,13 @@ export interface Settings {
   celebrations: boolean;
 }
 
+/** A timer running alongside the main one, such as laundry while you write. */
+export interface ParallelTimer {
+  entryId: Id;
+  taskId: Id;
+  start: number;
+}
+
 /** The one timer that can run at a time. Kept on its own so it survives a reload. */
 export interface RunningTimer {
   entryId: Id;

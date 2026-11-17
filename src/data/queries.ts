@@ -4,7 +4,7 @@ import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
 import { workedOnByDay, type WorkedOn } from '@/domain/workedOn';
 import { db } from './db';
-import type { BacklogFolder, CalendarEvent, DayRecord, Objective, WeekRecord, Id, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
+import type { BacklogFolder, CalendarEvent, DayRecord, Objective, WeekRecord, Id, ParallelTimer, RunningTimer, Session, Subtask, Task, TaskDay, TaskState, TimeEntry } from './types';
 
 const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.order, b.order);
 
@@ -277,4 +277,10 @@ export function useTracked(days: Day[], nowMs: number, enabled: boolean): Tracke
 /** Every open task (not finished, archived or deleted), for picking one by name. */
 export function useOpenTasks(): Task[] {
   return useLiveQuery(() => db.tasks.where('state').equals('active').filter((t) => t.completedAt === null && t.kind === 'task').toArray(), []) ?? [];
+}
+
+/** Timers running alongside the main one. */
+export function useParallelTimers(): ParallelTimer[] {
+  const row = useLiveQuery(() => db.meta.get('parallel'), []);
+  return (row?.value as ParallelTimer[] | undefined) ?? [];
 }

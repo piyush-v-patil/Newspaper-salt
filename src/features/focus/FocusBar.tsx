@@ -1,6 +1,13 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { Check, Coffee, Pause, Play, X } from 'lucide-react';
+import { Check, Coffee, Layers, Pause, Play, Square, X } from 'lucide-react';
+import { useState } from 'react';
+import { toggleParallelTimer } from '@/data/commands/timer';
+import { useOpenTasks, useParallelTimers, useTasksById } from '@/data/queries';
+import type { ParallelTimer } from '@/data/types';
+import { today } from '@/domain/clock';
+import { PickerPanel } from '@/features/task/pickers/PickerPanel';
+import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/ui/Popover';
 import { useNow } from '@/app/useNow';
 import { useRunningTimer, useTask } from '@/data/queries';
 import { formatMinutes } from '@/domain/dates';
@@ -10,6 +17,60 @@ import { useFocus } from './focusStore';
 import { useTaskTime } from './useTaskTime';
 
 const iconButton = 'grid h-7 w-7 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink';
+
+/** A task timed alongside the main one: its name, its running time, and a stop button. */
+function AlongsideChip({ timer, title }: { timer: ParallelTimer; title: string }) {
+  const nowMs = useNow(1000);
+  return (
+    <span data-testid="alongside" className="flex h-7 max-w-[200px] items-center gap-1.5 rounded-full border border-line bg-surface pl-2.5 pr-1 text-[12.5px]">
+      <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" aria-hidden />
+      <span className="min-w-0 truncate">{title}</span>
+      <span className="tabular text-accent">{formatElapsed(nowMs - timer.start)}</span>
+      <button
+        type="button"
+        aria-label={`Stop ${title}`}
+        onClick={() => void toggleParallelTimer(timer.taskId)}
+        className="grid h-5 w-5 place-items-center rounded-full text-ink-2 hover:bg-hover hover:text-ink"
+      >
+        <Square size={9} fill="currentColor" />
+      </button>
+    </span>
+  );
+}
+
+/** Starts timing another task alongside, picked by name (today's first). */
+function AlongsideButton({ exclude }: { exclude: string[] }) {
+  const [open, setOpen] = useState(false);
+  const tasks = useOpenTasks();
+  return (
+    <PopoverRoot open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" aria-label="Time another task alongside" title="Time another task alongside" className={iconButton}>
+          <Layers size={15} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" label="Time alongside">
+        <PickerPanel
+          label="Time alongside"
+          placeholder="Which task runs alongside?"
+          emptyText="No other open tasks match."
+          getOptions={(query) => {
+            const q = query.trim().toLowerCase();
+            return tasks
+              .filter((t) => !exclude.includes(t.id) && t.title.toLowerCase().includes(q))
+              .sort((a, b) => Number(b.day === today()) - Number(a.day === today()))
+              .slice(0, 8)
+              .map((t) => ({ key: t.id, label: t.title, value: t.id }));
+          }}
+          onSelect={(id) => {
+            void toggleParallelTimer(id);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </PopoverRoot>
+  );
+}
 
 /**
  * The task being worked on, its timer, and the controls for it. Docked along
@@ -25,6 +86,9 @@ export function FocusBar() {
 
   // A running timer always shows in the bar, including after a reload.
   const running = useRunningTimer();
+  const alongside = useParallelTimers();
+  const alongsideTasks = useTasksById(alongside.map((t) => t.taskId));
+  const chips = alongside.map((t) => <AlongsideChip key={t.entryId} timer={t} title={alongsideTasks.get(t.taskId)?.title ?? 'Task'} />);
   useEffect(() => {
     if (running && useFocus.getState().barTaskId !== running.taskId) useFocus.setState({ barTaskId: running.taskId });
   }, [running]);
@@ -42,7 +106,18 @@ export function FocusBar() {
     );
   }
 
-  if (!task || task.state !== 'active' || task.completedAt !== null) return null;
+  if (!task || task.state !== 'active' || task.completedAt !== null) {
+    if (alongside.length === 0) return null;
+    return (
+      <div role="region" aria-label="Focus bar" className="flex h-11 shrink-0 items-center gap-2 border-t border-line bg-panel px-3 text-[13px]">
+        <span className="text-[12px] text-ink-3">Alongside</span>
+        {chips}
+        <div className="ml-auto">
+          <AlongsideButton exclude={alongside.map((t) => t.taskId)} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div role="region" aria-label="Focus bar" className="flex h-11 shrink-0 items-center gap-2 border-t border-line bg-panel px-3 text-[13px]">
@@ -66,7 +141,9 @@ export function FocusBar() {
         {formatElapsed(time.todayMs)}
         {task.plannedMin !== null && <span className="text-ink-3"> / {formatMinutes(task.plannedMin)}</span>}
       </span>
+      {chips.length > 0 && <span className="ml-2 flex min-w-0 items-center gap-1.5 overflow-hidden">{chips}</span>}
       <div className="ml-auto flex items-center gap-0.5">
+        <AlongsideButton exclude={[task.id, ...alongside.map((t) => t.taskId)]} />
         <button type="button" aria-label="Complete task" title="Complete" onClick={() => void completeAndAdvance(task.id)} className={iconButton}>
           <Check size={15} />
         </button>

@@ -11,7 +11,7 @@ import { useNow } from '@/app/useNow';
 import { PLANNING_CARD, WEEKLY_PLANNING_CARD, WEEKLY_REVIEW_CARD } from '@/data/commands/days';
 import { linkTask } from '@/data/commands/objectives';
 import { setActualForDay } from '@/data/commands/timer';
-import { useRunningTimer } from '@/data/queries';
+import { useParallelTimers, useRunningTimer } from '@/data/queries';
 import { BACKLOG, type BacklogPriority, type DailyPriority, type Task } from '@/data/types';
 import { BACKLOG_PRIORITIES } from '@/domain/backlog';
 import { today } from '@/domain/clock';
@@ -46,13 +46,16 @@ const BACKLOG_PRIORITY_PILL: Record<BacklogPriority, string> = {
 function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) => void }) {
   const { actual } = useTaskData();
   const timer = useRunningTimer();
-  const running = timer?.taskId === task.id;
+  const alongside = useParallelTimers().find((t) => t.taskId === task.id);
+  const running = timer?.taskId === task.id || !!alongside;
   const nowMs = useNow(1000, running);
   const tracked = actual.get(task.id);
   // A card on a day shows that day's time; in the backlog, all of it.
   const onDay = task.day === BACKLOG ? tracked?.totalMs : tracked?.byDay.get(task.day);
-  const runningOnThisDay = running && (task.day === BACKLOG || toDay(new Date(timer.start)) === task.day);
-  const actualMin = msToMinutes((onDay ?? 0) + (runningOnThisDay ? nowMs - timer.start : 0));
+  // Finished entries are in `tracked`; the one still running is added here.
+  const start = timer?.taskId === task.id ? timer.start : alongside?.start;
+  const runningOnThisDay = start !== undefined && (task.day === BACKLOG || toDay(new Date(start)) === task.day);
+  const actualMin = msToMinutes((onDay ?? 0) + (runningOnThisDay ? nowMs - start : 0));
   const hasActual = actualMin > 0 || running || task.plannedMin !== null;
   const empty = task.plannedMin === null && !hasActual;
 

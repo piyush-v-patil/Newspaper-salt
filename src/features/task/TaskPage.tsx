@@ -1,7 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { useSearch } from '@tanstack/react-router';
-import { Copy, Ellipsis, Merge, Repeat, Trash2, X } from 'lucide-react';
+import { Copy, Ellipsis, Layers, Merge, Repeat, Trash2, X } from 'lucide-react';
+import { toggleParallelTimer } from '@/data/commands/timer';
 import { useEffect, useRef, useState } from 'react';
 import {
   deleteTask,
@@ -14,7 +15,7 @@ import {
   setPlannedTime,
   setTaskCompleted,
 } from '@/data/commands/tasks';
-import { useSubtasks, useTask } from '@/data/queries';
+import { useParallelTimers, useRunningTimer, useSubtasks, useTask } from '@/data/queries';
 import type { Task } from '@/data/types';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { ActualChip } from './ActualChip';
@@ -71,6 +72,8 @@ function TaskPageBody({ task, onClose, onOpen }: { task: Task; onClose: () => vo
   const done = task.completedAt !== null;
   const [repeatOpen, setRepeatOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const mainTimer = useRunningTimer();
+  const alongside = useParallelTimers().some((t) => t.taskId === task.id);
 
   return (
     <>
@@ -106,6 +109,11 @@ function TaskPageBody({ task, onClose, onOpen }: { task: Task; onClose: () => vo
                 <Menu.Item className={menuItem} onSelect={() => void duplicateTask(task.id)}>
                   <Copy size={14} /> Duplicate
                 </Menu.Item>
+                {!done && mainTimer?.taskId !== task.id && (
+                  <Menu.Item className={menuItem} onSelect={() => void toggleParallelTimer(task.id)}>
+                    <Layers size={14} /> {alongside ? 'Stop timing alongside' : 'Time alongside'}
+                  </Menu.Item>
+                )}
                 <Menu.Item className={menuItem} onSelect={() => setMergeOpen(true)}>
                   <Merge size={14} /> Merge into…
                 </Menu.Item>

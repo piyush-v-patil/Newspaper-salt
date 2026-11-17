@@ -23,7 +23,7 @@ const OLD_WORK_COLOR = '#4f5bd5';
 export const WORK_COLOR = '#f5a623';
 
 interface MetaRow {
-  key: 'profile' | 'settings' | 'timer';
+  key: 'profile' | 'settings' | 'timer' | 'parallel';
   value: unknown;
 }
 

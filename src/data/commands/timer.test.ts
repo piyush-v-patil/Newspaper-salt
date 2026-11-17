@@ -5,7 +5,7 @@ import { db } from '../db';
 import { clearUndo, undoLast } from '../undo';
 import { createTask, setTaskCompleted } from './tasks';
 import { addSubtask, setSubtaskCompleted } from './subtasks';
-import { addTimeEntry, deleteTimeEntry, getRunningTimer, setActualForDay, startTimer, stopTimer, toggleSubtaskTimer, toggleTimer, updateTimeEntry } from './timer';
+import { addTimeEntry, deleteTimeEntry, getRunningTimer, setActualForDay, startTimer, stopTimer, toggleParallelTimer, toggleSubtaskTimer, toggleTimer, updateTimeEntry, getParallelTimers } from './timer';
 
 const DAY = '2026-11-17';
 let clock = 0;
@@ -218,5 +218,43 @@ describe('subtask timing and editing entries', () => {
     await addTimeEntry(task.id, start, start + 90 * 60_000);
     expect(await minutesFor(task.id, '2026-11-16')).toBe(90);
     expect((await db.tasks.get(task.id))?.lastActivityDay).toBe('2026-11-16');
+  });
+});
+
+describe('timing alongside', () => {
+  it('runs a second timer alongside the main one, and both count', async () => {
+    const writing = await createTask({ title: 'Write' });
+    const laundry = await createTask({ title: 'Laundry' });
+    await startTimer(writing.id);
+    expect(await toggleParallelTimer(laundry.id)).toBe(true);
+    advance(40);
+    expect(await minutesFor(writing.id)).toBe(40);
+    expect(await minutesFor(laundry.id)).toBe(40);
+    // Stopping the main timer leaves the other running.
+    await stopTimer();
+    advance(5);
+    expect(await minutesFor(laundry.id)).toBe(45);
+    expect(await toggleParallelTimer(laundry.id)).toBe(false);
+    expect(await getParallelTimers()).toEqual([]);
+    advance(10);
+    expect(await minutesFor(laundry.id)).toBe(45);
+  });
+
+  it('hands a task over to the main timer, and finishing a task stops it', async () => {
+    const laundry = await createTask({ title: 'Laundry' });
+    const dishes = await createTask({ title: 'Dishes' });
+    await toggleParallelTimer(laundry.id);
+    advance(10);
+    await startTimer(laundry.id);
+    expect(await getParallelTimers()).toEqual([]);
+    advance(10);
+    expect(await minutesFor(laundry.id)).toBe(20);
+    // The main timer's own task cannot also run alongside.
+    expect(await toggleParallelTimer(laundry.id)).toBe(false);
+    await toggleParallelTimer(dishes.id);
+    advance(5);
+    await setTaskCompleted(dishes.id, true);
+    expect(await getParallelTimers()).toEqual([]);
+    expect((await db.timeEntries.where('taskId').equals(dishes.id).toArray()).every((e) => e.end !== null)).toBe(true);
   });
 });

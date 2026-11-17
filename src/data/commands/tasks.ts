@@ -17,7 +17,7 @@ import {
 } from '../types';
 import { recordUndo } from '../undo';
 import { withSnapshot } from './snapshot';
-import { getRunningTimer, stopRunningTimer } from './timer';
+import { getRunningTimer, stopParallelFor, stopRunningTimer } from './timer';
 
 export interface NewTask {
   title: string;
@@ -124,6 +124,7 @@ export const setTaskCompleted = command(async (id: Id, completed: boolean): Prom
     await db.tasks.update(id, { completedAt: now(), completedDay: day, lastActivityDay: day, updatedAt: now() });
     // Finishing a task stops its timer.
     if ((await getRunningTimer())?.taskId === id) await stopRunningTimer();
+    await stopParallelFor(id);
 
     // With that setting on, a task finished without any tracked time today has its estimate logged as actual.
     const task = await db.tasks.get(id);
