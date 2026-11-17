@@ -69,7 +69,9 @@ async function extendEventSeries(series: EventSeries): Promise<void> {
   const until = series.endDay !== null && series.endDay < horizon ? series.endDay : horizon;
   const from = shiftDay(series.generatedThrough, 1);
   if (from > until) return;
-  const occurrences = occurrencesBetween(series.repeat, series.startDay, from, until).map(
+  // Days that already have an occurrence are skipped, so an extension cut short can safely run again.
+  const have = new Set((await db.events.where('seriesId').equals(series.id).toArray()).map((e) => e.day));
+  const occurrences = occurrencesBetween(series.repeat, series.startDay, from, until).filter((day) => !have.has(day)).map(
     (day): CalendarEvent => ({ id: crypto.randomUUID(), day, seriesId: series.id, ...series.template }),
   );
   await db.events.bulkAdd(occurrences);
@@ -116,6 +118,49 @@ export const stopEventSeries = command(async (id: Id): Promise<void> => {
     'Stopped repeating',
     async () => {
       await db.events.bulkPut(later);
+      await db.eventSeries.put(series);
+    },
+    true,
+  );
+});
+
+/**
+ * "Edit all": copies this occurrence's title, time and channel to its series
+ * and to every later occurrence. Earlier ones stay as they were.
+ */
+export const applyEventToSeries = command(async (id: Id): Promise<number> => {
+  const event = await db.events.get(id);
+  if (!event?.seriesId) return 0;
+  const series = await db.eventSeries.get(event.seriesId);
+  if (!series) return 0;
+  const template = { title: event.title, startMin: event.startMin, endMin: event.endMin, channelId: event.channelId, blocksTime: event.blocksTime };
+  const later = await db.events.where('seriesId').equals(series.id).filter((e) => e.day > event.day).toArray();
+  await db.eventSeries.update(series.id, { template });
+  await db.events.bulkPut(later.map((e) => ({ ...e, ...template })));
+  recordUndo(
+    'Updated all upcoming',
+    async () => {
+      await db.events.bulkPut(later);
+      await db.eventSeries.put(series);
+    },
+    true,
+  );
+  return later.length;
+});
+
+/** Deletes this occurrence and every later one, ending the series the day before. */
+export const deleteEventAndFollowing = command(async (id: Id): Promise<void> => {
+  const event = await db.events.get(id);
+  if (!event?.seriesId) return;
+  const series = await db.eventSeries.get(event.seriesId);
+  if (!series) return;
+  const removed = await db.events.where('seriesId').equals(series.id).filter((e) => e.day >= event.day).toArray();
+  await db.events.bulkDelete(removed.map((e) => e.id));
+  await db.eventSeries.update(series.id, { endDay: shiftDay(event.day, -1) });
+  recordUndo(
+    removed.length === 1 ? 'Event deleted' : `${removed.length} events deleted`,
+    async () => {
+      await db.events.bulkPut(removed);
       await db.eventSeries.put(series);
     },
     true,

@@ -243,3 +243,33 @@ test('an event can repeat, and auto-scheduling works around every occurrence', a
   await page.keyboard.press('Shift+ArrowRight');
   await expect(page.getByTestId('event')).toHaveCount(0);
 });
+
+test('an event can repeat monthly, a change can go to every later occurrence, and the rest can be deleted', async ({ page }) => {
+  await openAt(page, '08:00');
+  await dragMouse(page, await pointAt(page, 9, 2), await pointAt(page, 10, 0));
+  await page.getByLabel('Event title').fill('Rent review');
+  await page.getByLabel('Event title').press('Enter');
+  await page.getByTestId('event').click();
+  await page.getByLabel('Repeat').selectOption({ label: 'Every month on the 17th' });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Rename this one and send the change to the rest.
+  await page.getByTestId('event').click();
+  await expect(page.getByRole('dialog', { name: 'Edit event' })).toContainText('Every month');
+  await page.getByLabel('Event title').fill('Budget review');
+  await page.getByRole('button', { name: 'Apply to all upcoming' }).click();
+  await expect(page.getByText('Updated all upcoming')).toBeVisible();
+  await page.goto('/today?date=2026-12-17');
+  await expect(page.getByTestId('event')).toHaveAccessibleName('Budget review, 09:00 – 10:00');
+  await page.goto('/today?date=2026-12-18');
+  await expect(page.getByTestId('event')).toHaveCount(0);
+
+  // Delete December's and every later one; November's stays.
+  await page.goto('/today?date=2026-12-17');
+  await page.getByTestId('event').click();
+  await page.getByRole('button', { name: 'Delete this and following' }).click();
+  await expect(page.getByTestId('event')).toHaveCount(0);
+  await expect(page.getByText(/deleted/)).toBeVisible();
+  await page.goto('/today');
+  await expect(page.getByTestId('event')).toHaveAccessibleName('Budget review, 09:00 – 10:00');
+});

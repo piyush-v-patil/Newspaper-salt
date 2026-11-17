@@ -2,7 +2,12 @@ import { useDroppable } from '@dnd-kit/core';
 import { useToday } from '@/app/useToday';
 import { Repeat, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { convertEventToTask, createEvent, deleteEvent, makeEventRepeat, stopEventSeries, updateEvent } from '@/data/commands/events';
+import { applyEventToSeries, convertEventToTask, createEvent, deleteEvent, deleteEventAndFollowing, makeEventRepeat, stopEventSeries, updateEvent } from '@/data/commands/events';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/data/db';
+import { describeRepeat } from '@/domain/recurrence';
+import { format } from 'date-fns';
+import { fromDay } from '@/domain/dates';
 import { changeSession, removeSession, workingWindow } from '@/data/commands/sessions';
 import { setTaskCompleted } from '@/data/commands/tasks';
 import { useSchedule, useTracked } from '@/data/queries';
@@ -50,11 +55,41 @@ const GUTTER = 44;
 const NEW_EVENT_SNAP = 15;
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const REPEATS: { label: string; repeat: (weekday: number) => RepeatRule }[] = [
-  { label: 'Every day', repeat: () => ({ kind: 'daily', interval: 1, weekdays: [] }) },
-  { label: 'Weekdays', repeat: () => ({ kind: 'weekdays', interval: 1, weekdays: [] }) },
-  { label: 'Weekly', repeat: (weekday) => ({ kind: 'weekly', interval: 1, weekdays: [weekday] }) },
+const REPEATS: { label: (day: Day) => string; repeat: (weekday: number) => RepeatRule }[] = [
+  { label: () => 'Every day', repeat: () => ({ kind: 'daily', interval: 1, weekdays: [] }) },
+  { label: () => 'Weekdays', repeat: () => ({ kind: 'weekdays', interval: 1, weekdays: [] }) },
+  { label: (day) => `Every ${WEEKDAY_NAMES[weekdayOf(day)]}`, repeat: (weekday) => ({ kind: 'weekly', interval: 1, weekdays: [weekday] }) },
+  { label: (day) => `Every other ${WEEKDAY_NAMES[weekdayOf(day)]}`, repeat: (weekday) => ({ kind: 'weekly', interval: 2, weekdays: [weekday] }) },
+  { label: (day) => `Every month on the ${format(fromDay(day), 'do')}`, repeat: () => ({ kind: 'monthly', interval: 1, weekdays: [] }) },
+  { label: (day) => `Every year on ${format(fromDay(day), 'MMMM d')}`, repeat: () => ({ kind: 'yearly', interval: 1, weekdays: [] }) },
 ];
+
+const seriesButton = 'rounded px-1.5 py-1 text-left text-ink-2 hover:bg-hover hover:text-ink';
+
+/** What a repeating event's occurrence can do to the rest of its series. */
+function SeriesControls({ block, onClose }: { block: Extract<Block, { kind: 'event' }>; onClose: () => void }) {
+  const series = useLiveQuery(() => (block.seriesId ? db.eventSeries.get(block.seriesId) : undefined), [block.seriesId]);
+  const run = (work: () => Promise<unknown>) => {
+    onClose();
+    void work();
+  };
+  return (
+    <div className="flex flex-col gap-0.5 border-t border-line pt-2 text-[12px]">
+      <span className="flex items-center gap-1 px-1.5 pb-1 text-ink-3">
+        <Repeat size={12} /> {series ? describeRepeat(series.repeat) : 'Repeats'}
+      </span>
+      <button type="button" className={seriesButton} onClick={() => run(() => applyEventToSeries(block.id))}>
+        Apply to all upcoming
+      </button>
+      <button type="button" className={seriesButton} onClick={() => run(() => stopEventSeries(block.id))}>
+        Stop after this
+      </button>
+      <button type="button" className={`${seriesButton} hover:!text-over`} onClick={() => run(() => deleteEventAndFollowing(block.id))}>
+        Delete this and following
+      </button>
+    </div>
+  );
+}
 
 function EventEditor({ block, timeLabel, onClose }: { block: Extract<Block, { kind: 'event' }>; timeLabel: string; onClose: () => void }) {
   const save = (title: string) => {
@@ -79,21 +114,7 @@ function EventEditor({ block, timeLabel, onClose }: { block: Extract<Block, { ki
       />
       <span className="tabular text-[12px] text-ink-3">{timeLabel}</span>
       {block.seriesId ? (
-        <div className="flex items-center justify-between text-[12px]">
-          <span className="flex items-center gap-1 text-ink-2">
-            <Repeat size={12} /> Repeats
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              void stopEventSeries(block.id);
-            }}
-            className="rounded px-1.5 py-0.5 text-ink-2 hover:bg-hover hover:text-ink"
-          >
-            Stop after this
-          </button>
-        </div>
+        <SeriesControls block={block} onClose={onClose} />
       ) : (
         <select
           aria-label="Repeat"
@@ -108,8 +129,8 @@ function EventEditor({ block, timeLabel, onClose }: { block: Extract<Block, { ki
         >
           <option value="">Does not repeat</option>
           {REPEATS.map((r, i) => (
-            <option key={r.label} value={i}>
-              {r.label === 'Weekly' ? `Every ${WEEKDAY_NAMES[weekdayOf(block.day)]}` : r.label}
+            <option key={i} value={i}>
+              {r.label(block.day)}
             </option>
           ))}
         </select>
