@@ -89,6 +89,25 @@ export function AccountForm({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** After a confirmation link that did not work: what happened, in plain words. */
+function LinkProblem() {
+  const [reason] = useState(() => {
+    try {
+      const value = sessionStorage.getItem('pi-auth-error');
+      sessionStorage.removeItem('pi-auth-error');
+      return value;
+    } catch {
+      return null;
+    }
+  });
+  if (!reason) return null;
+  return (
+    <p role="alert" className="rounded-lg border border-line bg-hover px-3 py-2 text-[12.5px] leading-relaxed text-ink-2">
+      That confirmation link didn’t work ({reason.toLowerCase()}). A link works only once: if you already clicked it, your account is confirmed, so just sign in below. Otherwise, sign in and choose “Resend the confirmation email”.
+    </p>
+  );
+}
+
 /** Settings → Account & sync. */
 export function AccountSettings() {
   const status = useSyncStatus();
@@ -98,6 +117,7 @@ export function AccountSettings() {
   if (!status.user) {
     return (
       <div className="flex flex-col gap-4">
+        <LinkProblem />
         <p className="text-[13px] leading-relaxed text-ink-2">
           Sign in to keep your tasks, calendar and settings the same on every device. Everything still works offline; changes sync when you are back online.
         </p>
