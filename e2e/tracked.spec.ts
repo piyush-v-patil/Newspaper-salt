@@ -18,10 +18,12 @@ test('time actually worked can be shown on the calendar, growing while the timer
   await page.keyboard.press('t');
   await expect(page).toHaveURL(/\/today$/);
 
+  // Shown by default, and can be hidden.
   const tracked = page.getByTestId('tracked');
+  await expect(tracked).toHaveAccessibleName('Worked on Write report, 09:00 – 09:40');
+  await page.getByRole('button', { name: 'Show tracked time' }).click();
   await expect(tracked).toHaveCount(0);
   await page.getByRole('button', { name: 'Show tracked time' }).click();
-  await expect(tracked).toHaveAccessibleName('Worked on Write report, 09:00 – 09:40');
 
   // A running timer shows as a block running to now.
   await card(page, 'Write report').hover();

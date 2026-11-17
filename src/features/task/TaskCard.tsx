@@ -1,21 +1,23 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
-import { CalendarDays, Clock, Flag, Plus, Repeat, Tally5, Target } from 'lucide-react';
+import { CalendarDays, Clock, Flag, Pause, Plus, Repeat, Tally5, Target } from 'lucide-react';
+import { toggleTaskTimer } from '@/features/focus/actions';
+import { useTaskTime } from '@/features/focus/useTaskTime';
 import { autoScheduleTask } from '@/data/commands/sessions';
 import { useUi } from '@/app/uiStore';
 import { bumpCounter, setBacklogPriority, setChannel, setCounter, setDailyPriority, setDueDay, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
-import { dueLabel } from '@/domain/dayLabels';
+import { dueLabel, shortDate } from '@/domain/dayLabels';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
 import { PLANNING_CARD, WEEKLY_PLANNING_CARD, WEEKLY_REVIEW_CARD } from '@/data/commands/days';
 import { linkTask } from '@/data/commands/objectives';
 import { setActualForDay } from '@/data/commands/timer';
-import { useParallelTimers, useRunningTimer } from '@/data/queries';
-import { BACKLOG, type BacklogPriority, type DailyPriority, type Task } from '@/data/types';
+import { useParallelTimers, useRunningTimer, useTimeEntries } from '@/data/queries';
+import { BACKLOG, type BacklogPriority, type DailyPriority, type Subtask, type Task } from '@/data/types';
 import { BACKLOG_PRIORITIES } from '@/domain/backlog';
 import { today } from '@/domain/clock';
-import { msToMinutes } from '@/domain/time';
+import { formatHms, msToMinutes } from '@/domain/time';
 import { useChannelMap, useSettings } from '@/data/ReferenceData';
 import { formatClock, formatMinutes, toDay } from '@/domain/dates';
 import { CheckCircle } from '@/ui/CheckCircle';
@@ -56,7 +58,8 @@ function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) 
   const start = timer?.taskId === task.id ? timer.start : alongside?.start;
   const runningOnThisDay = start !== undefined && (task.day === BACKLOG || toDay(new Date(start)) === task.day);
   const actualMin = msToMinutes((onDay ?? 0) + (runningOnThisDay ? nowMs - start : 0));
-  const hasActual = actualMin > 0 || running || task.plannedMin !== null;
+  // Only planned time until some time has been tracked.
+  const hasActual = actualMin > 0 || running || (onDay ?? 0) > 0;
   const empty = task.plannedMin === null && !hasActual;
 
   return (
@@ -65,15 +68,85 @@ function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) 
       onClick={onOpen}
       data-testid="card-time"
       aria-label={task.plannedMin === null ? 'Set planned time' : `Planned time ${formatMinutes(task.plannedMin)}`}
-      className={`tabular flex h-5 shrink-0 items-center gap-1 rounded px-1.5 text-[11.5px] text-ink-2 hover:text-ink ${
-        empty ? 'opacity-0 hover:bg-hover focus-visible:opacity-100 group-hover:opacity-100' : 'bg-hover'
+      className={`tabular flex h-5 shrink-0 items-center gap-1 rounded px-1.5 text-[11.5px] ${
+        running
+          ? 'bg-done font-medium text-white'
+          : empty
+            ? 'text-ink-2 opacity-0 hover:bg-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100'
+            : 'bg-hover text-ink-2 hover:text-ink'
       }`}
     >
       {empty && <Clock size={13} />}
-      {hasActual && <span className={running ? 'font-medium text-accent' : ''}>{formatMinutes(actualMin)}</span>}
-      {hasActual && <span className="text-ink-3">/</span>}
+      {hasActual && <span>{formatMinutes(actualMin)}</span>}
+      {hasActual && <span className={running ? '' : 'text-ink-3'}>/</span>}
       {!empty && <span>{task.plannedMin === null ? '–:––' : formatMinutes(task.plannedMin)}</span>}
     </button>
+  );
+}
+
+/** Subtasks on a card, each with its own actual / planned time; the one being timed in green. */
+function CardSubtasks({ task, items }: { task: Task; items: Subtask[] }) {
+  const entries = useTimeEntries(task.id);
+  const timer = useRunningTimer();
+  const nowMs = useNow(1000, timer?.taskId === task.id && timer.subtaskId !== null);
+  const spent = new Map<string, number>();
+  for (const e of entries) if (e.subtaskId) spent.set(e.subtaskId, (spent.get(e.subtaskId) ?? 0) + ((e.end ?? nowMs) - e.start));
+  return (
+    <ul className="mt-1.5 flex flex-col gap-1">
+      {items.map((s) => {
+        const running = timer?.subtaskId === s.id;
+        return (
+          <li key={s.id} className="flex items-center gap-2">
+            <CheckCircle
+              size="sm"
+              checked={s.completedAt !== null}
+              onChange={(next) => void setSubtaskCompleted(s.id, next)}
+              label={s.completedAt !== null ? `Reopen ${s.title}` : `Complete ${s.title}`}
+            />
+            <span className={`min-w-0 flex-1 truncate text-[13px] ${s.completedAt !== null ? 'text-ink-3 line-through' : 'text-ink-2'}`}>{s.title}</span>
+            <span className="tabular shrink-0 text-[10.5px] text-ink-3">
+              <span className={running ? 'font-medium text-done' : ''}>{formatMinutes(msToMinutes(spent.get(s.id) ?? 0))}</span>
+              {' / '}
+              {s.plannedMin === null ? '--:--' : formatMinutes(s.plannedMin)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** While this task is being timed: pause, and its actual time ticking beside the planned. */
+function RunningFooter({ task }: { task: Task }) {
+  const timer = useRunningTimer();
+  const running = timer?.taskId === task.id;
+  const time = useTaskTime(running ? task.id : undefined);
+  if (!running) return null;
+  return (
+    <div data-testid="card-running" className="-mx-3 -mb-2.5 mt-2.5 flex items-center justify-between border-t border-line px-3 py-2">
+      <button
+        type="button"
+        aria-label={`Pause ${task.title}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          void toggleTaskTimer(task.id);
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="grid h-7 w-7 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
+      >
+        <Pause size={15} />
+      </button>
+      <div className="flex gap-4 text-right">
+        <span className="flex flex-col">
+          <span className="text-[9.5px] font-medium uppercase tracking-wider text-ink-3">Actual</span>
+          <span className="tabular text-[13px] text-done">{formatHms(time.totalMs)}</span>
+        </span>
+        <span className="flex flex-col">
+          <span className="text-[9.5px] font-medium uppercase tracking-wider text-ink-3">Planned</span>
+          <span className="tabular text-[13px] text-ink-2">{task.plannedMin === null ? '--:--' : formatMinutes(task.plannedMin)}</span>
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -178,21 +251,7 @@ export function TaskCardBody({ task }: { task: Task }) {
 
       <p className={`mt-1 break-words text-[14.5px] leading-snug transition-colors duration-200 ${done ? 'text-ink-3 line-through' : 'text-ink'}`}>{task.title}</p>
 
-      {items.length > 0 && (
-        <ul className="mt-1.5 flex flex-col gap-1">
-          {items.map((s) => (
-            <li key={s.id} className="flex items-center gap-2">
-              <CheckCircle
-                size="sm"
-                checked={s.completedAt !== null}
-                onChange={(next) => void setSubtaskCompleted(s.id, next)}
-                label={s.completedAt !== null ? `Reopen ${s.title}` : `Complete ${s.title}`}
-              />
-              <span className={`min-w-0 flex-1 truncate text-[13px] ${s.completedAt !== null ? 'text-ink-3 line-through' : 'text-ink-2'}`}>{s.title}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      {items.length > 0 && <CardSubtasks task={task} items={items} />}
 
       {/* Bottom: complete, then what is set on the task; on hover, quick actions instead. The channel on the right. */}
       <div className="mt-2 flex items-center justify-between gap-2">
@@ -269,11 +328,10 @@ export function TaskCardBody({ task }: { task: Task }) {
               type="button"
               onClick={open('due')}
               title="Due date"
-              className={`tabular shrink-0 rounded px-1.5 py-px text-[11px] font-medium ${
-                !done && task.dueDay <= today() ? 'bg-over/12 text-over' : 'bg-hover text-ink-2'
-              }`}
+              aria-label={dueLabel(task.dueDay, today())}
+              className={`tabular shrink-0 rounded px-0.5 text-[12.5px] hover:bg-hover ${!done && task.dueDay <= today() ? 'text-over' : 'text-ink-2'}`}
             >
-              {dueLabel(task.dueDay, today())}
+              {shortDate(task.dueDay)}
             </button>
           )}
         </span>
@@ -286,6 +344,7 @@ export function TaskCardBody({ task }: { task: Task }) {
           </button>
         )}
       </div>
+      <RunningFooter task={task} />
     </>
   );
 }
@@ -360,7 +419,7 @@ export function TaskCard({ task }: { task: Task }) {
           onMouseMove={() => useTaskFocus.getState().hoveredId !== task.id && setHovered(task.id)}
           onMouseLeave={() => useTaskFocus.getState().hoveredId === task.id && setHovered(null)}
           onClick={() => (task.kind === 'ritual' ? openRitual(task) : openTask(task.id))}
-          className={`${cardClass} animate-card ${isDragging ? 'opacity-40' : ''} ${selected ? 'border-accent ring-1 ring-accent' : ''}`}
+          className={`${cardClass} animate-card ${task.kind === 'ritual' ? 'opacity-60 hover:opacity-100' : ''} ${isDragging ? 'opacity-40' : ''} ${selected ? 'border-accent ring-1 ring-accent' : ''}`}
         >
           <TaskCardBody task={task} />
         </div>

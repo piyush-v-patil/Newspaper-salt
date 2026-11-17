@@ -18,12 +18,12 @@ test('a due date is set apart from the planned day, and a task due today is neve
   await expect(page.getByRole('button', { name: 'Due date' })).toHaveText('Due Thu');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(card(page, 'File taxes')).toContainText('Due Thu');
+  await expect(card(page, 'File taxes')).toContainText('Nov 19');
 
   // The badge opens the same picker; today turns it red.
   await card(page, 'File taxes').getByTitle('Due date').click();
   await page.getByRole('option', { name: /^Today/ }).click();
-  await expect(card(page, 'File taxes').getByTitle('Due date')).toHaveText('Due today');
+  await expect(card(page, 'File taxes').getByTitle('Due date')).toHaveAccessibleName('Due today');
 
   // Sent to the backlog, it still shows up on today with a way back.
   await card(page, 'File taxes').hover();

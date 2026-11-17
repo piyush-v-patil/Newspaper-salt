@@ -9,7 +9,7 @@ import { dayWorkload, workloadLevel, workloadLimitFor } from '@/domain/workload'
 import { useTaskData } from './TaskData';
 
 const TEXT = { ok: 'text-ink-3', near: 'text-warn', over: 'text-over' };
-const FILL = { ok: 'bg-ink-3', near: 'bg-warn', over: 'bg-over' };
+const FILL = { ok: 'bg-done', near: 'bg-warn', over: 'bg-over' };
 
 /**
  * Planned time for a day against the workload threshold. Only work tasks

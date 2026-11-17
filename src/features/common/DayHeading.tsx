@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { ArrowDownWideNarrow } from 'lucide-react';
+import { ArrowDownUp } from 'lucide-react';
 import { sortDay } from '@/data/commands/tasks';
 import { fromDay, type Day } from '@/domain/dates';
 
@@ -30,9 +30,9 @@ export function SortButton({ day }: { day: Day }) {
       aria-label="Sort tasks"
       title="Sort: timeboxed by time, then by priority"
       onClick={() => void sortDay(day)}
-      className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+      className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
     >
-      <ArrowDownWideNarrow size={15} />
+      <ArrowDownUp size={14} />
     </button>
   );
 }

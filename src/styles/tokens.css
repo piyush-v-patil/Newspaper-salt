@@ -170,26 +170,26 @@ body {
 }
 
 /* Calendar blocks. A session takes its channel's colour; an event is neutral. */
-/* A timebox: a light dotted fill in the channel's colour, titled in that colour. */
+/* A timebox: a solid block in the channel's colour, titled in a dark shade of it. */
 .session-block {
   --tag: var(--accent);
-  background-color: color-mix(in srgb, var(--tag) 9%, var(--surface));
-  background-image: radial-gradient(color-mix(in srgb, var(--tag) 38%, transparent) 0.9px, transparent 1.3px);
-  background-size: 7px 7px;
-  color: color-mix(in srgb, var(--tag) 78%, var(--ink));
+  background-color: color-mix(in srgb, var(--tag) 82%, var(--surface));
+  color: color-mix(in srgb, var(--tag) 22%, #2b2118);
 }
 [data-theme='dark'] .session-block {
-  background-color: color-mix(in srgb, var(--tag) 16%, var(--surface));
-  color: color-mix(in srgb, var(--tag) 55%, white);
+  background-color: color-mix(in srgb, var(--tag) 70%, var(--surface));
+  color: color-mix(in srgb, var(--tag) 15%, #1a140d);
 }
+/* Time actually worked: diagonal stripes in the channel's colour. */
 .tracked-block {
   --tag: var(--accent);
-  background-color: color-mix(in srgb, var(--tag) 30%, var(--surface));
-  border-left: 3px solid var(--tag);
-  color: color-mix(in srgb, var(--tag) 35%, var(--ink));
+  background-color: color-mix(in srgb, var(--tag) 12%, transparent);
+  background-image: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--tag) 85%, transparent) 0 2px, transparent 2px 6px);
+  border-top: 1.5px solid var(--tag);
+  border-bottom: 1.5px solid var(--tag);
+  color: color-mix(in srgb, var(--tag) 25%, var(--ink));
 }
 [data-theme='dark'] .tracked-block {
-  background-color: color-mix(in srgb, var(--tag) 30%, var(--surface));
   color: color-mix(in srgb, var(--tag) 40%, white);
 }
 .time-pill {

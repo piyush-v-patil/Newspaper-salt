@@ -1,3 +1,7 @@
+import { useRunningTimer } from '@/data/queries';
+import { useTaskTime } from '@/features/focus/useTaskTime';
+import { formatMinutes } from '@/domain/dates';
+import { msToMinutes } from '@/domain/time';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { Link, useNavigate, type LinkProps } from '@tanstack/react-router';
 import { createFolder } from '@/data/commands/folders';
@@ -52,6 +56,18 @@ const weekly: Item[] = [
 ];
 const lists: Item[] = [{ to: '/backlog', label: 'Backlog', icon: Layers, hint: 'B' }];
 
+/** Beside Focus while a timer runs: that task's time so far. */
+function FocusBadge() {
+  const timer = useRunningTimer();
+  const time = useTaskTime(timer?.taskId);
+  if (!timer) return null;
+  return (
+    <span data-testid="focus-badge" className="tabular rounded bg-hover px-1.5 text-[11px] font-medium text-ink-2">
+      {formatMinutes(msToMinutes(time.totalMs))}
+    </span>
+  );
+}
+
 function NavLink({ item, state = null }: { item: Item; state?: RitualState }) {
   const Icon = item.icon;
   return (
@@ -66,7 +82,8 @@ function NavLink({ item, state = null }: { item: Item; state?: RitualState }) {
       <span className="flex-1 truncate">{item.label}</span>
       {state === 'due' && <span className="rounded bg-accent-soft px-1.5 text-[11px] font-medium text-accent">Start</span>}
       {state === 'done' && <Check size={14} className="text-ink-3" aria-label="Done" />}
-      {item.hint && state === null && (
+      {item.to === '/focus' && <FocusBadge />}
+      {item.hint && state === null && item.to !== '/focus' && (
         <span className="opacity-0 transition-opacity group-hover:opacity-100">
           <Kbd>{item.hint}</Kbd>
         </span>

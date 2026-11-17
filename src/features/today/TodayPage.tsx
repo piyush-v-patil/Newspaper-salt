@@ -6,7 +6,7 @@ import { useTasksForDay, useWorkedOn } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
 import { shiftDay, type Day } from '@/domain/dates';
 import { matchesFilter } from '@/domain/filter';
-import { DayHeading, SortButton } from '@/features/common/DayHeading';
+import { DayHeading } from '@/features/common/DayHeading';
 import { ViewHeader } from '@/features/common/ViewHeader';
 import { useLayout } from '@/app/useLayout';
 import { TodayObjectives } from './TodayObjectives';
@@ -52,10 +52,7 @@ export function TodayPage({ date }: { date?: Day }) {
           {!compactNav && <TodayObjectives day={day} tasks={tasks ?? []} />}
           <section aria-label="Tasks" className="flex w-full max-w-[300px] flex-col gap-2.5">
             <div className="flex flex-col gap-3 pb-1">
-              <div className="flex items-start justify-between gap-2">
-                <DayHeading day={day} isToday={day === current} />
-                <SortButton day={day} />
-              </div>
+              <DayHeading day={day} isToday={day === current} />
               <WorkloadCounter day={day} tasks={tasks ?? []} />
             </div>
             <AddTaskRow day={day} tasks={tasks} />

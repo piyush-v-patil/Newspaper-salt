@@ -1,4 +1,4 @@
-import { Clock, Pause, Play, Plus, X } from 'lucide-react';
+import { CirclePlus, Pause, Play, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNow } from '@/app/useNow';
 import { addSubtask, deleteSubtask, renameSubtask, setSubtaskCompleted, setSubtaskPlanned } from '@/data/commands/subtasks';
@@ -6,48 +6,41 @@ import { toggleSubtaskTimer } from '@/data/commands/timer';
 import { useRunningTimer, useTimeEntries } from '@/data/queries';
 import type { Id, RunningTimer, Subtask } from '@/data/types';
 import { formatMinutes } from '@/domain/dates';
-import { msToMinutes } from '@/domain/time';
+import { formatHms, msToMinutes } from '@/domain/time';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/ui/Popover';
 import { TimePicker } from './pickers/pickers';
 import { useTaskFocus } from './taskFocus';
 
-/** Actual against planned for one subtask; clicking sets its estimate. */
+/** Actual time (ticking in green while timed) and planned time, which a click sets. */
 function SubtaskTime({ subtask, actualMs, running }: { subtask: Subtask; actualMs: number; running: boolean }) {
   const [open, setOpen] = useState(false);
-  const actualMin = msToMinutes(actualMs);
-  const shown = actualMin > 0 || running || subtask.plannedMin !== null;
   return (
-    <PopoverRoot open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={subtask.plannedMin === null ? `Set planned time for ${subtask.title}` : `Planned time for ${subtask.title}: ${formatMinutes(subtask.plannedMin)}`}
-          className={`tabular flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[12px] text-ink-2 hover:text-ink ${
-            shown ? 'bg-hover' : 'opacity-0 hover:bg-hover focus-visible:opacity-100 group-hover:opacity-100'
-          }`}
-        >
-          {shown ? (
-            <>
-              <span className={running ? 'font-medium text-accent' : ''}>{formatMinutes(actualMin)}</span>
-              <span className="text-ink-3">/</span>
-              <span>{subtask.plannedMin === null ? '–:––' : formatMinutes(subtask.plannedMin)}</span>
-            </>
-          ) : (
-            <Clock size={13} />
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent label="Planned time">
-        <TimePicker
-          value={subtask.plannedMin}
-          onPick={(m) => {
-            void setSubtaskPlanned(subtask.id, m);
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </PopoverRoot>
+    <span className="flex shrink-0 items-center">
+      <span data-testid="subtask-actual" className={`tabular w-[64px] text-right text-[13px] ${running ? 'text-done' : 'text-ink-2'}`}>
+        {running ? formatHms(actualMs) : formatMinutes(msToMinutes(actualMs))}
+      </span>
+      <PopoverRoot open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={subtask.plannedMin === null ? `Set planned time for ${subtask.title}` : `Planned time for ${subtask.title}: ${formatMinutes(subtask.plannedMin)}`}
+            className="tabular ml-2 w-[52px] rounded px-1 py-0.5 text-right text-[13px] text-ink-3 hover:bg-surface hover:text-ink"
+          >
+            {subtask.plannedMin === null ? '--:--' : formatMinutes(subtask.plannedMin)}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent label="Planned time">
+          <TimePicker
+            value={subtask.plannedMin}
+            onPick={(m) => {
+              void setSubtaskPlanned(subtask.id, m);
+              setOpen(false);
+            }}
+          />
+        </PopoverContent>
+      </PopoverRoot>
+    </span>
   );
 }
 
@@ -140,7 +133,7 @@ export function Subtasks({ taskId, subtasks }: { taskId: Id; subtasks: Subtask[]
         ))}
       </ul>
       <div className="flex items-center gap-2.5 px-1 py-1 text-ink-3 focus-within:text-ink">
-        <Plus size={14} />
+        <CirclePlus size={15} />
         <input
           ref={add}
           value={draft}

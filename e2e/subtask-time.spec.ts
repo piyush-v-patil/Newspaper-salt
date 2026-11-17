@@ -17,7 +17,7 @@ test('a subtask can be timed and given its own estimate; tracked time can be edi
   await taskPage.getByRole('button', { name: 'Set planned time for Write copy' }).click();
   await page.keyboard.type('20');
   await page.keyboard.press('Enter');
-  await expect(taskPage.getByRole('button', { name: /Planned time for Write copy/ })).toHaveText('0:00/0:20');
+  await expect(taskPage.getByRole('button', { name: /Planned time for Write copy/ })).toHaveText('0:20');
 
   // Time it for 12 minutes.
   await taskPage.getByRole('listitem').filter({ has: page.getByLabel('Subtask') }).hover();
@@ -25,7 +25,7 @@ test('a subtask can be timed and given its own estimate; tracked time can be edi
   await expect(taskPage.getByRole('button', { name: 'Pause Write copy' })).toBeVisible();
   await page.clock.fastForward('12:00');
   await taskPage.getByRole('button', { name: 'Pause Write copy' }).click();
-  await expect(taskPage.getByRole('button', { name: /Planned time for Write copy/ })).toHaveText('0:12/0:20');
+  await expect(taskPage.getByTestId('subtask-actual')).toHaveText('0:12');
 
   // Edit that entry to run 9:30 – 10:00.
   await taskPage.getByRole('button', { name: 'Actual time' }).click();

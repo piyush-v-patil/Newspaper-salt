@@ -72,7 +72,7 @@ export const useUi = create<UiState>()(
       navDrawerOpen: false,
       floatingBarHidden: false,
       hourPx: DEFAULT_HOUR_PX,
-      showTracked: false,
+      showTracked: true,
       toggleTracked: () => set((s) => ({ showTracked: !s.showTracked })),
       zoomCalendar: (direction) =>
         set((s) => {
@@ -96,6 +96,9 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'pi-ui',
+      // Version 1: tracked time shows on the calendar by default.
+      version: 1,
+      migrate: (persisted, version) => (version < 1 ? { ...(persisted as object), showTracked: true } : persisted) as UiState,
       partialize: (s) => ({
         leftOpen: s.leftOpen,
         rightOpen: s.rightOpen,

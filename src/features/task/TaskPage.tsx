@@ -1,7 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { useSearch } from '@tanstack/react-router';
-import { Copy, Ellipsis, Layers, Merge, Repeat, Tally5, Trash2, X } from 'lucide-react';
+import { Copy, Ellipsis, Layers, Merge, Pause, Play, Repeat, Tally5, Trash2, X } from 'lucide-react';
+import { toggleTaskTimer } from '@/features/focus/actions';
+import { useTaskTime } from '@/features/focus/useTaskTime';
+import { formatMinutes } from '@/domain/dates';
+import { formatHms, msToMinutes } from '@/domain/time';
 import { CounterEditor } from './CounterEditor';
 import { toggleParallelTimer } from '@/data/commands/timer';
 import { useEffect, useRef, useState } from 'react';
@@ -63,6 +67,34 @@ export function TitleField({ task, large = false }: { task: Task; large?: boolea
         task.completedAt !== null ? 'text-ink-3 line-through' : ''
       }`}
     />
+  );
+}
+
+/** Actual (ticking, in green while timed) and planned time, with a start or stop button, beside the title. */
+function TimerSummary({ task }: { task: Task }) {
+  const time = useTaskTime(task.id);
+  return (
+    <div className="flex shrink-0 items-start gap-4 pt-0.5">
+      <span className="flex flex-col items-end">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-ink-3">Actual</span>
+        <span data-testid="task-actual" className={`tabular text-[20px] leading-tight ${time.running ? 'text-done' : 'text-ink-2'}`}>
+          {time.running ? formatHms(time.totalMs) : formatMinutes(msToMinutes(time.totalMs))}
+        </span>
+      </span>
+      <span className="flex flex-col items-end">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-ink-3">Planned</span>
+        <span className="tabular text-[20px] leading-tight text-ink-2">{task.plannedMin === null ? '--:--' : formatMinutes(task.plannedMin)}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => void toggleTaskTimer(task.id)}
+        className={`mt-1 flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11.5px] font-semibold uppercase tracking-wider ${
+          time.running ? 'border-done text-done hover:bg-done-soft' : 'border-line-strong text-ink-2 hover:bg-hover'
+        }`}
+      >
+        {time.running ? <Pause size={13} /> : <Play size={13} />} {time.running ? 'Stop' : 'Start'}
+      </button>
+    </div>
   );
 }
 
@@ -154,6 +186,7 @@ function TaskPageBody({ task, onClose, onOpen }: { task: Task; onClose: () => vo
             />
           </span>
           <TitleField task={task} />
+          {!done && <TimerSummary task={task} />}
         </div>
         <CounterEditor task={task} />
         <section aria-label="Subtasks" className="pl-[26px]">

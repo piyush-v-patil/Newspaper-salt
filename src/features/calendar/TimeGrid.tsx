@@ -483,9 +483,9 @@ export function TimeGrid({ days, showHeader = false }: { days: Day[]; showHeader
       {showHeader && (
         <div className="flex shrink-0 border-b border-line" style={{ paddingLeft: GUTTER }}>
           {days.map((day) => (
-            <div key={day} className="min-w-0 flex-1 border-l border-line px-2 py-2">
-              <span className={`text-[13px] font-semibold ${day === current ? 'text-accent' : 'text-ink'}`}>{weekdayName(day).slice(0, 3)}</span>{' '}
-              <span className="text-[12px] text-ink-3">{shortDate(day)}</span>
+            <div key={day} title={`${weekdayName(day)}, ${shortDate(day)}`} className="flex min-w-0 flex-1 flex-col border-l border-line px-3 py-2 leading-tight">
+              <span className={`text-[10.5px] font-medium uppercase tracking-wide ${day === current ? 'text-ink' : 'text-ink-3'}`}>{weekdayName(day).slice(0, 3)}</span>
+              <span className={`text-[20px] ${day === current ? 'font-semibold text-ink' : day < current ? 'text-ink-3' : 'text-ink-2'}`}>{Number(day.slice(8))}</span>
             </div>
           ))}
         </div>
