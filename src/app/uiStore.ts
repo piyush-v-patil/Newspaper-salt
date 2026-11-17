@@ -28,6 +28,8 @@ interface UiState {
   /** The command palette (Ctrl+K) and the keyboard shortcut sheet (?). */
   paletteOpen: boolean;
   shortcutsOpen: boolean;
+  /** The navigation opened as a drawer, when it is not docked. */
+  navDrawerOpen: boolean;
   setCalendarSpan: (span: CalendarSpan) => void;
   cycleWorkloadMode: () => void;
   setNoRoomTask: (id: Id | null) => void;
@@ -57,6 +59,7 @@ export const useUi = create<UiState>()(
       noRoomTaskId: null,
       paletteOpen: false,
       shortcutsOpen: false,
+      navDrawerOpen: false,
       setCalendarSpan: (calendarSpan) => set({ calendarSpan }),
       cycleWorkloadMode: () =>
         set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : s.workloadMode === 'work' ? 'actual' : 'all' })),

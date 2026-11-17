@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { NavToggle } from '@/app/LeftNav';
 import { FilterButton } from './FilterButton';
 
 interface Props {
@@ -17,7 +18,8 @@ const arrow = 'grid h-7 w-7 place-items-center rounded text-ink-2 hover:bg-hover
 export function ViewHeader({ title, onPrevious, onNext, onBackToToday, children }: Props) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-6">
-      <div className="flex items-center">
+      <NavToggle />
+      <div className="flex shrink-0 items-center">
         <button type="button" aria-label="Previous day" onClick={onPrevious} className={arrow}>
           <ChevronLeft size={16} />
         </button>
@@ -25,13 +27,13 @@ export function ViewHeader({ title, onPrevious, onNext, onBackToToday, children 
           <ChevronRight size={16} />
         </button>
       </div>
-      <h1 className="text-[16px] font-semibold tracking-tight">{title}</h1>
+      <h1 className="min-w-0 truncate text-[16px] font-semibold tracking-tight">{title}</h1>
       {onBackToToday && (
-        <button type="button" onClick={onBackToToday} className="ml-2 h-7 rounded-md border border-line px-2.5 text-[12.5px] text-ink-2 hover:bg-hover">
+        <button type="button" onClick={onBackToToday} className="ml-2 h-7 shrink-0 whitespace-nowrap rounded-md border border-line px-2.5 text-[12.5px] text-ink-2 hover:bg-hover">
           Back to today
         </button>
       )}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         {children}
         <FilterButton />
       </div>

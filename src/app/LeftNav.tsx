@@ -8,6 +8,7 @@ import {
   Columns3,
   Crosshair,
   Layers,
+  Menu,
   Settings,
   Sparkles,
   Sun,
@@ -19,6 +20,7 @@ import {
 import { useState } from 'react';
 import { useRitualStatus, useWeeklyStatus, type RitualState } from '@/features/rituals/ritualStatus';
 import { Kbd } from '@/ui/Kbd';
+import { useLayout } from './useLayout';
 import { useUi } from './uiStore';
 
 interface Item {
@@ -88,7 +90,7 @@ function NavBody() {
         <span className="text-[15px] font-semibold tracking-tight">Life Of Pi</span>
         <button
           type="button"
-          onClick={toggleLeft}
+          onClick={() => (useUi.getState().navDrawerOpen ? useUi.setState({ navDrawerOpen: false }) : toggleLeft())}
           aria-label="Hide navigation"
           title="Hide navigation  <"
           className="grid h-6 w-6 place-items-center rounded text-ink-3 hover:bg-hover hover:text-ink"
@@ -109,12 +111,15 @@ function NavBody() {
 
 /**
  * Docked when open. When hidden, it slides back in while the cursor is at
- * the left edge of the window.
+ * the left edge of the window, or as a drawer from the menu button (the
+ * way in on touch screens and narrow windows).
  */
 export function LeftNav({ hidden = false }: { hidden?: boolean }) {
   const open = useUi((s) => s.leftOpen) && !hidden;
+  const drawer = useUi((s) => s.navDrawerOpen);
   const [peek, setPeek] = useState(false);
-  const shown = open || peek;
+  const shown = open || peek || drawer;
+  const closeDrawer = () => useUi.setState({ navDrawerOpen: false });
 
   return (
     <>
@@ -126,23 +131,50 @@ export function LeftNav({ hidden = false }: { hidden?: boolean }) {
         {open && <NavBody />}
       </div>
       {!open && (
-        <div
-          className="absolute inset-y-0 left-0 z-30"
-          onMouseEnter={() => setPeek(true)}
-          onMouseLeave={() => setPeek(false)}
-          data-testid="nav-peek"
-        >
-          <div className="h-full w-2" />
+        <>
+          {drawer && <button type="button" aria-label="Close navigation" onClick={closeDrawer} className="absolute inset-0 z-30 cursor-default bg-black/20 data-[state=open]:animate-fade" />}
           <div
-            inert={!shown}
-            className={`absolute inset-y-0 left-0 border-r border-line shadow-pop transition-[transform,visibility] duration-200 ease-out-soft ${
-              shown ? 'visible translate-x-0' : 'invisible -translate-x-full'
-            }`}
+            className="absolute inset-y-0 left-0 z-30"
+            onMouseEnter={() => setPeek(true)}
+            onMouseLeave={() => setPeek(false)}
+            // Following a link closes the drawer.
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest('a')) return;
+              closeDrawer();
+              // The pointer is still over the panel; without this it would stay slid out.
+              setPeek(false);
+            }}
+            data-testid="nav-peek"
           >
-            <NavBody />
+            <div className="h-full w-2" />
+            <div
+              inert={!shown}
+              className={`absolute inset-y-0 left-0 border-r border-line shadow-pop transition-[transform,visibility] duration-200 ease-out-soft ${
+                shown ? 'visible translate-x-0' : 'invisible -translate-x-full'
+              }`}
+            >
+              <NavBody />
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
+  );
+}
+
+/** Opens the navigation when it is not docked. Sits at the start of each page header. */
+export function NavToggle() {
+  const docked = useUi((s) => s.leftOpen);
+  const { compactNav } = useLayout();
+  if (docked && !compactNav) return null;
+  return (
+    <button
+      type="button"
+      aria-label="Open navigation"
+      onClick={() => useUi.setState({ navDrawerOpen: true })}
+      className="-ml-2 mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover"
+    >
+      <Menu size={17} />
+    </button>
   );
 }

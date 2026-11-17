@@ -4,14 +4,14 @@ import { formatClock } from '@/domain/dates';
 /** One setting: what it is and what it does on the left, the control on the right. */
 export function Row({ label, description, htmlFor, children }: { label: string; description?: ReactNode; htmlFor?: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-6 border-b border-line py-3.5 last:border-0">
+    <div className="flex flex-col items-start justify-between gap-2 border-b border-line py-3.5 last:border-0 sm:flex-row sm:items-center sm:gap-6">
       <div className="flex min-w-0 flex-col gap-0.5">
         <label htmlFor={htmlFor} className="text-[14px] font-medium">
           {label}
         </label>
         {description && <p className="text-[12.5px] leading-relaxed text-ink-3">{description}</p>}
       </div>
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>
     </div>
   );
 }

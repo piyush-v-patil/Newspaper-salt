@@ -90,3 +90,21 @@ test('Shift+L switches to dark mode and it sticks', async ({ page }) => {
   await page.reload();
   await expect(html).toHaveAttribute('data-theme', 'dark');
 });
+
+test('on a narrow window the navigation becomes a drawer and panels open over the content', async ({ page }) => {
+  await page.setViewportSize({ width: 400, height: 820 });
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  await expect(nav).not.toBeInViewport();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expect(nav).toBeInViewport();
+  await nav.getByRole('link', { name: 'Board' }).click();
+  await expect(page).toHaveURL(/\/board$/);
+  await expect(nav).not.toBeInViewport();
+
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Calendar' });
+  await expect(panel).toBeVisible();
+  await page.getByRole('button', { name: 'Close panel' }).click({ position: { x: 10, y: 400 } });
+  await expect(page.getByRole('complementary')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+});

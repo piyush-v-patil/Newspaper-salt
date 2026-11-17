@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
+import { NavToggle } from '@/app/LeftNav';
 import { useState } from 'react';
 import { updateProfile } from '@/data/commands/profile';
 import { updateSettings } from '@/data/commands/settings';
@@ -347,10 +348,14 @@ export function SettingsPage({ section = 'general' }: { section?: SettingsSectio
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center border-b border-line px-6">
+        <NavToggle />
         <h1 className="text-[16px] font-semibold tracking-tight">Settings</h1>
       </header>
-      <div className="flex min-h-0 flex-1">
-        <nav aria-label="Settings sections" className="flex w-[180px] shrink-0 flex-col gap-0.5 border-r border-line p-3">
+      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+        <nav
+          aria-label="Settings sections"
+          className="flex shrink-0 gap-0.5 overflow-x-auto border-b border-line p-2 sm:w-[180px] sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r sm:p-3"
+        >
           {SETTINGS_SECTIONS.map((s) => (
             <button
               key={s.id}
@@ -360,14 +365,14 @@ export function SettingsPage({ section = 'general' }: { section?: SettingsSectio
                 setShown(s.id);
                 void navigate({ to: '/settings', search: { section: s.id }, replace: true });
               }}
-              className={`h-8 rounded-md px-2.5 text-left text-[13.5px] ${s.id === active ? 'bg-hover font-medium text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink'}`}
+              className={`h-8 shrink-0 whitespace-nowrap rounded-md px-2.5 text-left text-[13.5px] ${s.id === active ? 'bg-hover font-medium text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink'}`}
             >
               {s.label}
             </button>
           ))}
         </nav>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div key={active} className="mx-auto w-full max-w-[720px] animate-fade px-8 py-6">
+          <div key={active} className="mx-auto w-full max-w-[720px] animate-fade px-4 py-6 sm:px-8">
             <h2 className="pb-4 text-[18px] font-semibold tracking-tight">{SETTINGS_SECTIONS.find((s) => s.id === active)?.label}</h2>
             <Body />
           </div>

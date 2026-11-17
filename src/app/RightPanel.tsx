@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useRouterState } from '@tanstack/react-router';
 import { Archive, CalendarDays, ListChecks, ListTodo, Search, Target, Trash2, type LucideIcon } from 'lucide-react';
 import { CalendarPanel } from '@/features/calendar/CalendarPanel';
@@ -6,6 +7,7 @@ import { BacklogPanel } from '@/features/lists/BacklogPanel';
 import { ObjectivesPanel } from '@/features/week/ObjectivesPanel';
 import { ArchivePanel, SearchPanel, TrashPanel } from '@/features/lists/panels';
 import { useTasksInState } from '@/data/queries';
+import { useLayout } from './useLayout';
 import { useUi, type RightPanelKind } from './uiStore';
 
 interface PanelDef {
@@ -50,14 +52,23 @@ export function RightPanel() {
   const onCalendar = useRouterState({ select: (s) => s.location.pathname === '/calendar' });
   const shown = panels.map((p) => (p.kind === 'calendar' && onCalendar ? { ...p, label: 'Tasks', icon: ListChecks, hint: 'Shift C' } : p));
   const active = shown.find((p) => p.kind === rightPanel) ?? shown[0];
+  const { overlayPanel, phone } = useLayout();
+
+  // On reaching a narrow window, the panel closes rather than cover the content.
+  useEffect(() => {
+    if (overlayPanel) useUi.setState({ rightOpen: false });
+  }, [overlayPanel]);
 
   return (
     <div className="flex shrink-0">
+      {overlayPanel && rightOpen && (
+        <button type="button" aria-label="Close panel" onClick={() => useUi.setState({ rightOpen: false })} className="absolute inset-0 z-20 cursor-default bg-black/20" />
+      )}
       <aside
         aria-label={active.label}
         aria-hidden={!rightOpen}
-        className="overflow-hidden border-line transition-[width] duration-200 ease-out-soft"
-        style={{ width: rightOpen ? 300 : 0, borderLeftWidth: rightOpen ? 1 : 0 }}
+        className={`overflow-hidden border-line bg-canvas transition-[width] duration-200 ease-out-soft ${overlayPanel ? 'absolute inset-y-0 right-12 z-20 shadow-pop' : ''}`}
+        style={{ width: rightOpen ? (phone ? 'calc(100vw - 48px)' : 300) : 0, borderLeftWidth: rightOpen ? 1 : 0 }}
       >
         {rightOpen && <PanelBody kind={active.kind} onCalendar={onCalendar} />}
       </aside>

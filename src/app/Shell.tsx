@@ -17,6 +17,7 @@ import { RightPanel } from './RightPanel';
 import { UndoToast } from './UndoToast';
 import { useTheme } from './theme';
 import { useDayChange } from './useToday';
+import { useLayout } from './useLayout';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
 
 /** Loads shared data first, so everything inside can rely on it being there. */
@@ -38,6 +39,7 @@ function ShellBody() {
   // Focus mode clears the panels away; the navigation still slides in from the left edge.
   // The same goes for the rituals, which bring their own columns.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { compactNav } = useLayout();
   const focusing = /^\/(focus|plan|shutdown|weekly|welcome)/.test(pathname);
 
   // Until the first plan is made, setup is the only way in.
@@ -50,7 +52,7 @@ function ShellBody() {
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-canvas text-ink">
       <div className="relative flex min-h-0 flex-1">
-        <LeftNav hidden={focusing} />
+        <LeftNav hidden={focusing || compactNav} />
         <main className="flex min-w-0 flex-1 flex-col">
           <Outlet />
         </main>

@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
+import { NavToggle } from '@/app/LeftNav';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useToday } from '@/app/useToday';
@@ -117,6 +118,7 @@ export function WeekPage({ start }: { start?: Day }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-6">
+        <NavToggle />
         <div className="flex items-center">
           <button type="button" aria-label="Previous week" onClick={() => go(shiftDay(weekStart, -7))} className="grid h-7 w-7 place-items-center rounded text-ink-2 hover:bg-hover">
             <ChevronLeft size={16} />

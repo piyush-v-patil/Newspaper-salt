@@ -28,7 +28,7 @@ export function BacklogPanel() {
   // The full backlog page already lists these tasks; showing them twice would give each two homes to drag from.
   const onBacklogPage = useRouterState({ select: (s) => s.location.pathname === '/backlog' });
   return (
-    <div className="flex h-full w-[300px] flex-col">
+    <div className="flex h-full w-[max(300px,100%)] flex-col">
       <div className="flex h-14 shrink-0 items-center border-b border-line px-4">
         <h2 className="text-[13px] font-semibold">Backlog</h2>
       </div>

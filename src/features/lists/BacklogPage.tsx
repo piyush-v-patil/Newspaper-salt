@@ -1,4 +1,5 @@
 import { FolderPlus, X } from 'lucide-react';
+import { NavToggle } from '@/app/LeftNav';
 import { useMemo, useState } from 'react';
 import { useUi } from '@/app/uiStore';
 import { createFolder, deleteFolder } from '@/data/commands/folders';
@@ -49,6 +50,7 @@ export function BacklogPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-6">
+        <NavToggle />
         <h1 className="text-[16px] font-semibold tracking-tight">Backlog</h1>
         <span className="tabular text-[12.5px] text-ink-3">{all?.length ?? 0}</span>
         <div className="ml-auto flex items-center gap-2">

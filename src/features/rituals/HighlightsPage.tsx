@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { NavToggle } from '@/app/LeftNav';
 import { useShutdownDays, useTasksById } from '@/data/queries';
 import { longDayLabel } from '@/domain/dates';
 
@@ -11,6 +12,7 @@ export function HighlightsPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center border-b border-line px-6">
+        <NavToggle />
         <h1 className="text-[16px] font-semibold tracking-tight">Highlights</h1>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">

@@ -13,7 +13,7 @@ import { ChannelTag } from '@/features/task/ChannelTag';
 import { useOpenTask } from '@/features/task/useOpenTask';
 import { useToday } from '@/app/useToday';
 
-const shell = 'flex h-full w-[300px] flex-col';
+const shell = 'flex h-full w-[max(300px,100%)] flex-col';
 const header = 'flex h-14 shrink-0 items-center gap-2 border-b border-line px-4';
 const rowButton = 'grid h-6 w-6 shrink-0 place-items-center rounded text-ink-3 hover:bg-hover hover:text-ink';
 

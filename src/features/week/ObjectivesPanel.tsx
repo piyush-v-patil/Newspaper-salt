@@ -16,7 +16,7 @@ export function ObjectivesPanel() {
   const tasks = useObjectiveTasks(ids);
 
   return (
-    <div className="flex h-full w-[300px] flex-col">
+    <div className="flex h-full w-[max(300px,100%)] flex-col">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
         <h2 className="text-[13px] font-semibold">Weekly objectives</h2>
         <span className="text-[12.5px] text-ink-3">{weekLabel(weekStart)}</span>
