@@ -167,7 +167,11 @@ export async function signUp(email: string, password: string): Promise<{ error: 
   if (!sb) return { error: 'Sync is not set up in this version of the app.', note: null };
   const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: confirmUrl() } });
   if (error) return { error: error.message, note: null };
-  return { error: null, note: data.session ? null : 'Check your email and click the link to confirm your account, then sign in here.' };
+  // Supabase answers a sign-up for an existing email with a user that has no identities (and sends nothing useful).
+  if (data.user && data.user.identities?.length === 0) {
+    return { error: 'There is already an account with this email. Sign in with its password instead.', note: null };
+  }
+  return { error: null, note: data.session ? null : 'Check your email and click the link to confirm your account, then come back here and sign in.' };
 }
 
 /** The confirmation link brings you back to this web app, or to the published one from the Windows app. */

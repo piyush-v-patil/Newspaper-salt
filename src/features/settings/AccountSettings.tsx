@@ -33,6 +33,8 @@ export function AccountForm({ compact = false }: { compact?: boolean }) {
       setError(result.error);
       setNote(result.note);
       setCanResend(result.note !== null);
+      // Already has an account: switch to signing in, with the details kept.
+      if (result.error?.startsWith('There is already an account')) setMode('in');
     }
     setBusy(false);
   }
