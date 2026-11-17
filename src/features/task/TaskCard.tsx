@@ -1,7 +1,9 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useNavigate } from '@tanstack/react-router';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, Repeat, Target } from 'lucide-react';
+import { CalendarDays, Clock, Flag, Repeat, Target } from 'lucide-react';
+import { autoScheduleTask } from '@/data/commands/sessions';
+import { useUi } from '@/app/uiStore';
 import { setBacklogPriority, setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import { useNow } from '@/app/useNow';
@@ -26,7 +28,7 @@ import { useOpenTask } from './useOpenTask';
 /** Priority shows as a soft coloured pill with its name. */
 const PRIORITY_PILL: Record<DailyPriority, string> = {
   urgent: 'bg-over/12 text-over',
-  priority: 'bg-[#8a5bd0]/14 text-[#7a4cc0] dark:text-[#b897ef]',
+  priority: 'bg-accent-soft text-accent',
   normal: '',
   low: 'bg-hover text-ink-3',
 };
@@ -71,6 +73,22 @@ function CardTime({ task, onOpen }: { task: Task; onOpen: (e: React.MouseEvent) 
   );
 }
 
+/** A quick action on a hovered card: a grey icon, coloured when that thing is set. */
+function CardIcon({ label, active, onClick, children }: { label: string; active?: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={`grid h-6 w-6 place-items-center rounded hover:bg-hover ${active ?? 'text-ink-3 hover:text-ink'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** What a task card shows. Used by the list and by the copy that follows the cursor while dragging. */
 export function TaskCardBody({ task }: { task: Task }) {
   const { subtasks, sessions } = useTaskData();
@@ -97,14 +115,25 @@ export function TaskCardBody({ task }: { task: Task }) {
     openAction(task.id, kind);
   };
 
-  const markers = scheduled || task.seriesId || task.objectiveId || task.rolloverDays > 0;
+  const rollover = task.rolloverDays > 0 && (
+    <span
+      className="tabular grid h-[18px] min-w-[18px] place-items-center rounded-full bg-hover px-1 text-[11px] font-medium text-ink-2"
+      title={`Rolled over ${task.rolloverDays} ${task.rolloverDays === 1 ? 'day' : 'days'} in a row`}
+    >
+      {task.rolloverDays}
+    </span>
+  );
 
   return (
     <>
       {/* Top: when it is on the calendar, and actual against planned time. */}
       <div className="flex min-h-5 items-center justify-between gap-2">
         {scheduled ? (
-          <span className="tabular text-[11.5px] text-ink-2" title="Scheduled on the calendar">
+          <span
+            className="tabular flex h-5 items-center rounded px-1.5 text-[11.5px] font-medium text-ink"
+            style={{ background: `color-mix(in srgb, ${channel?.color ?? 'var(--ink-3)'} 45%, var(--surface))` }}
+            title="Scheduled on the calendar"
+          >
             {formatClock(scheduled.startMin, timeFormat).toLowerCase()}
           </span>
         ) : (
@@ -131,43 +160,64 @@ export function TaskCardBody({ task }: { task: Task }) {
         </ul>
       )}
 
-      {/* Bottom: complete, then what kind of task it is; the channel on the right. */}
+      {/* Bottom: complete, then what is set on the task; on hover, quick actions instead. The channel on the right. */}
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <CheckCircle checked={done} onChange={(next) => void setTaskCompleted(task.id, next)} label={done ? `Reopen ${task.title}` : `Complete ${task.title}`} />
-          {flag && (
-            <button
-              type="button"
-              onClick={open('priority')}
-              aria-label={flag.label}
-              title="Priority"
-              className={`rounded px-1.5 py-px text-[11px] font-medium ${flag.pill}`}
-            >
-              {flag.label}
-            </button>
-          )}
-          {markers && (
-            <>
+          <span className="flex min-w-0 items-center gap-1.5 group-hover:hidden group-data-[selected]:hidden">
+            {flag && (
+              <button
+                type="button"
+                onClick={open('priority')}
+                aria-label={flag.label}
+                title="Priority"
+                className={`rounded px-1.5 py-px text-[11px] font-medium ${flag.pill}`}
+              >
+                {flag.label}
+              </button>
+            )}
+            {task.seriesId && (
+              <span className="text-ink-3" title="Repeats">
+                <Repeat size={12} aria-label="Repeats" />
+              </span>
+            )}
+            {task.objectiveId && (
+              <button type="button" onClick={open('objective')} title="Linked to a weekly objective" className="flex items-center gap-1 rounded text-[11px] font-medium text-ink-2 hover:text-ink">
+                <Target size={11} /> This week
+              </button>
+            )}
+          </span>
+          {task.kind !== 'ritual' && (
+            <span className="hidden items-center gap-0.5 group-hover:flex group-data-[selected]:flex">
+              <CardIcon label="Change date" onClick={open('date')}>
+                <CalendarDays size={15} />
+              </CardIcon>
+              <CardIcon
+                label={scheduled ? 'Scheduled' : 'Timebox'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (scheduled) return;
+                  void autoScheduleTask(task.id, { allowSplit: true }).then((result) => {
+                    if (result === 'no-room') useUi.getState().setNoRoomTask(task.id);
+                  });
+                }}
+              >
+                <Clock size={15} />
+              </CardIcon>
+              <CardIcon label="Set priority" active={flag?.pill.split(' ').find((c) => c.startsWith('text-'))} onClick={open('priority')}>
+                <Flag size={15} fill={flag ? 'currentColor' : 'none'} />
+              </CardIcon>
+              <CardIcon label="Link to objective" active={task.objectiveId ? 'text-accent' : undefined} onClick={open('objective')}>
+                <Target size={15} />
+              </CardIcon>
               {task.seriesId && (
-                <span className="text-ink-3" title="Repeats">
-                  <Repeat size={12} aria-label="Repeats" />
+                <span className="px-0.5 text-ink-3" title="Repeats">
+                  <Repeat size={13} aria-hidden />
                 </span>
               )}
-              {task.objectiveId && (
-                <button type="button" onClick={open('objective')} title="Linked to a weekly objective" className="flex items-center gap-1 rounded text-[11px] font-medium text-ink-2 hover:text-ink">
-                  <Target size={11} /> This week
-                </button>
-              )}
-              {task.rolloverDays > 0 && (
-                <span
-                  className="tabular grid h-[18px] min-w-[18px] place-items-center rounded-full bg-hover px-1 text-[11px] font-medium text-ink-2"
-                  title={`Rolled over ${task.rolloverDays} ${task.rolloverDays === 1 ? 'day' : 'days'} in a row`}
-                >
-                  {task.rolloverDays}
-                </span>
-              )}
-            </>
+            </span>
           )}
+          {rollover}
         </span>
         {channel && (
           <button type="button" onClick={open('channel')} aria-label={`Channel ${channel.name}`} className="flex min-w-0 items-center gap-0.5 rounded text-[12.5px] text-ink-2 hover:text-ink">
@@ -243,6 +293,7 @@ export function TaskCard({ task }: { task: Task }) {
           {...listeners}
           data-task-id={task.id}
           data-testid="task"
+          data-selected={selected || undefined}
           onMouseEnter={() => setHovered(task.id)}
           // A card that appears under a resting pointer (after a drop, say) gets no enter event, so movement counts too.
           onMouseMove={() => useTaskFocus.getState().hoveredId !== task.id && setHovered(task.id)}

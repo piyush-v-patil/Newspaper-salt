@@ -5,8 +5,8 @@ import { recordUndo } from '../undo';
 
 /** Tag colours, assigned in turn so new channels look distinct. */
 export const CHANNEL_COLORS = [
-  '#4f5bd5', '#2e9f68', '#c9820f', '#d0507a', '#3a8fc9', '#8a5bd0',
-  '#d2603a', '#3aa6a0', '#7a8a2e', '#b0509f', '#5c6b7a', '#c2473f',
+  '#f5a623', '#2e9f68', '#2f7de1', '#d0507a', '#3aa6a0', '#d2603a',
+  '#3a8fc9', '#7a8a2e', '#c2473f', '#e0b400', '#5c6b7a', '#9a6b3c',
 ];
 
 /** Lower-case, no leading #, spaces to hyphens: how a channel name is stored. */

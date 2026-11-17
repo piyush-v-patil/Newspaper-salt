@@ -21,10 +21,10 @@ export function CheckCircle({ checked, onChange, label, size = 'md' }: Props) {
         onChange(!checked);
       }}
       className={`grid ${box} shrink-0 place-items-center rounded-full border transition-colors duration-200 ${
-        checked ? 'animate-check border-done bg-done text-white' : 'border-line-strong text-transparent hover:border-done hover:text-done'
+        checked ? 'animate-check border-done bg-done text-white' : 'border-ink-3/60 text-ink-3/70 hover:border-done hover:text-done'
       }`}
     >
-      <Check size={size === 'md' ? 12 : 9} strokeWidth={3} />
+      <Check size={size === 'md' ? 12 : 9} strokeWidth={checked ? 3 : 2.25} />
     </button>
   );
 }

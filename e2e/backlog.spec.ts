@@ -37,6 +37,8 @@ test('the backlog groups tasks by time bucket, with folders and its own priority
   await page.keyboard.press('!');
   await page.getByPlaceholder('Set backlog priority').fill('hi');
   await page.keyboard.press('Enter');
+  // A hovered card shows quick actions; away from it, the priority shows as a pill.
+  await page.mouse.move(0, 0);
   await expect(card(page, 'Renew passport').getByLabel('High')).toBeVisible();
   await page.getByLabel('Filter by priority').selectOption('high');
   await expect(page.getByTestId('task')).toHaveCount(1);

@@ -19,6 +19,9 @@ import type {
   WeekRecord,
 } from './types';
 
+const OLD_WORK_COLOR = '#4f5bd5';
+export const WORK_COLOR = '#f5a623';
+
 interface MetaRow {
   key: 'profile' | 'settings' | 'timer';
   value: unknown;
@@ -62,6 +65,12 @@ export class PiDatabase extends Dexie {
       events: 'id, day, seriesId',
       eventSeries: 'id',
     });
+    // Version 3: the default work colour moved from indigo to orange.
+    this.version(3).stores({}).upgrade(async (tx) => {
+      for (const table of ['channels', 'contexts']) {
+        await tx.table(table).filter((row) => row.color === OLD_WORK_COLOR).modify({ color: WORK_COLOR });
+      }
+    });
 
     this.on('populate', (tx) => {
       const createdAt = Date.now();
@@ -74,11 +83,11 @@ export class PiDatabase extends Dexie {
       const first = keyBetween(null, null);
       const second = keyBetween(first, null);
       tx.table('contexts').bulkAdd([
-        { id: work, name: 'Work', color: '#4f5bd5', isPersonal: false, order: first },
+        { id: work, name: 'Work', color: WORK_COLOR, isPersonal: false, order: first },
         { id: personal, name: 'Personal', color: '#2e9f68', isPersonal: true, order: second },
       ]);
       tx.table('channels').bulkAdd([
-        { id: crypto.randomUUID(), contextId: work, name: 'work', color: '#4f5bd5', isDefault: false, enabled: true, order: first },
+        { id: crypto.randomUUID(), contextId: work, name: 'work', color: WORK_COLOR, isDefault: false, enabled: true, order: first },
         { id: crypto.randomUUID(), contextId: personal, name: 'personal', color: '#2e9f68', isDefault: false, enabled: true, order: second },
       ]);
     });

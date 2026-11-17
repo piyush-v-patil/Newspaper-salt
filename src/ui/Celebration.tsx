@@ -8,7 +8,7 @@ export function celebrate(): void {
   useCelebration.setState((s) => ({ burst: s.burst + 1 }));
 }
 
-const COLORS = ['#4f5bd5', '#2e9f68', '#c9820f', '#d0507a', '#3a8fc9', '#8a5bd0'];
+const COLORS = ['#f5a623', '#2e9f68', '#2f7de1', '#d0507a', '#3aa6a0', '#e0b400'];
 const PIECES = 36;
 const DURATION_MS = 1500;
 
