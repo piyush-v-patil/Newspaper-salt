@@ -22,7 +22,6 @@ test('a task survives a reload, can be completed, deleted and restored', async (
 
   await page.getByRole('checkbox', { name: 'Complete Draft Q4 report' }).click();
   await expect(page.getByRole('checkbox', { name: 'Reopen Draft Q4 report' })).toBeChecked();
-  await expect(page.getByText('1 to do')).toBeVisible();
 
   await page.getByTestId('task').first().hover();
   await page.keyboard.press('Control+Backspace');

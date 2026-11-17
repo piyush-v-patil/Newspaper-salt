@@ -1,5 +1,5 @@
 import { compareKeys, keyAtEdge } from '@/domain/ordering';
-import { db } from '../db';
+import { command, db } from '../db';
 import type { Channel, Id } from '../types';
 
 /** Tag colours, assigned in turn so new channels look distinct. */
@@ -14,7 +14,7 @@ export function normalizeChannelName(name: string): string {
 }
 
 /** Returns the existing channel of that name, or creates one. */
-export async function createChannel(name: string, contextId: Id | null = null): Promise<Channel> {
+export const createChannel = command(async (name: string, contextId: Id | null = null): Promise<Channel> => {
   const clean = normalizeChannelName(name);
   if (!clean) throw new Error('A channel needs a name.');
   const all = await db.channels.toArray();
@@ -31,4 +31,4 @@ export async function createChannel(name: string, contextId: Id | null = null): 
   };
   await db.channels.add(channel);
   return channel;
-}
+});

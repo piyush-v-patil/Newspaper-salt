@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { serial } from './db';
 
 export interface UndoEntry {
   id: number;
@@ -43,7 +44,8 @@ export async function undoLast(): Promise<string | null> {
     stack: s.stack.slice(0, -1),
     toast: s.toast?.id === entry.id ? null : s.toast,
   }));
-  await entry.undo();
+  // An undo is a command like any other, so it waits its turn in the queue.
+  await serial(entry.undo);
   return entry.label;
 }
 

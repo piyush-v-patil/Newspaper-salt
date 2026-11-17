@@ -1,10 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { TaskDay } from '@/data/types';
+import type { Id, TaskDay } from '@/data/types';
 import type { Day } from '@/domain/dates';
 import type { TaskFilter } from '@/domain/filter';
 
 export type RightPanelKind = 'calendar' | 'objectives' | 'backlog' | 'archive' | 'search' | 'trash';
+
+export type CalendarSpan = 'day' | '3day' | 'week';
+/** What the workload counter totals: every task, or work tasks only. */
+export type WorkloadMode = 'all' | 'work';
 
 interface UiState {
   leftOpen: boolean;
@@ -17,6 +21,13 @@ interface UiState {
   focusedDay: Day | null;
   /** The add-task window, and the day it will add to. */
   addWindow: { day: TaskDay | null } | null;
+  calendarSpan: CalendarSpan;
+  workloadMode: WorkloadMode;
+  /** The task that auto-scheduling could not fit, while the user decides what to do. */
+  noRoomTaskId: Id | null;
+  setCalendarSpan: (span: CalendarSpan) => void;
+  cycleWorkloadMode: () => void;
+  setNoRoomTask: (id: Id | null) => void;
   toggleLeft: () => void;
   toggleRight: () => void;
   /** Opens the panel, or closes it if that panel is already showing. */
@@ -38,6 +49,12 @@ export const useUi = create<UiState>()(
       filterMenuOpen: false,
       focusedDay: null,
       addWindow: null,
+      calendarSpan: 'week',
+      workloadMode: 'all',
+      noRoomTaskId: null,
+      setCalendarSpan: (calendarSpan) => set({ calendarSpan }),
+      cycleWorkloadMode: () => set((s) => ({ workloadMode: s.workloadMode === 'all' ? 'work' : 'all' })),
+      setNoRoomTask: (noRoomTaskId) => set({ noRoomTaskId }),
       toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
       toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
       showRightPanel: (panel) =>
@@ -50,7 +67,14 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'pi-ui',
-      partialize: (s) => ({ leftOpen: s.leftOpen, rightOpen: s.rightOpen, rightPanel: s.rightPanel, filter: s.filter }),
+      partialize: (s) => ({
+        leftOpen: s.leftOpen,
+        rightOpen: s.rightOpen,
+        rightPanel: s.rightPanel,
+        filter: s.filter,
+        calendarSpan: s.calendarSpan,
+        workloadMode: s.workloadMode,
+      }),
     },
   ),
 );

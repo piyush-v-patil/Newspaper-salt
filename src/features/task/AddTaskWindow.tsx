@@ -203,11 +203,11 @@ export function AddTaskWindow() {
   return (
     <Dialog.Root open={addWindow !== null} onOpenChange={(open) => !open && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/25 animate-fade" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/25 data-[state=open]:animate-fade" />
         <Dialog.Content
           aria-describedby={undefined}
           onEscapeKeyDown={(e) => menuOpenRef.current && e.preventDefault()}
-          className="fixed left-1/2 top-[16%] z-50 w-[min(580px,calc(100vw-32px))] -translate-x-1/2 rounded-xl border border-line bg-surface shadow-pop outline-none animate-pop"
+          className="fixed left-1/2 top-[16%] z-50 w-[min(580px,calc(100vw-32px))] -translate-x-1/2 rounded-xl border border-line bg-surface shadow-pop outline-none data-[state=open]:animate-pop"
         >
           <Dialog.Title className="sr-only">Add task</Dialog.Title>
           {addWindow && <AddTaskForm initialDay={addWindow.day ?? today()} onDone={close} menuOpenRef={menuOpenRef} />}

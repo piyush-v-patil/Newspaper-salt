@@ -150,6 +150,24 @@ body {
   background: color-mix(in srgb, var(--tag) 24%, transparent);
 }
 
+/* Calendar blocks. A session takes its channel's colour; an event is neutral. */
+.session-block {
+  --tag: var(--accent);
+  background: color-mix(in srgb, var(--tag) 15%, var(--surface));
+  border-left: 3px solid var(--tag);
+  color: var(--ink);
+}
+.event-block {
+  background: var(--hover);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+}
+.ghost-block {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1.5px dashed var(--accent);
+  color: var(--accent);
+}
+
 /* Task notes (rich text) */
 .notes .tiptap {
   outline: none;

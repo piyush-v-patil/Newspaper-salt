@@ -1,10 +1,10 @@
 import { now, today } from '@/domain/clock';
 import { compareKeys, keyAtEdge } from '@/domain/ordering';
-import { db } from '../db';
+import { command, db } from '../db';
 import type { Id, Subtask } from '../types';
 import { recordUndo } from '../undo';
 
-export async function addSubtask(taskId: Id, title: string): Promise<Subtask> {
+export const addSubtask = command(async (taskId: Id, title: string): Promise<Subtask> => {
   const text = title.trim();
   if (!text) throw new Error('A subtask needs a title.');
   const keys = (await db.subtasks.where('taskId').equals(taskId).toArray()).map((s) => s.order).sort(compareKeys);
@@ -24,9 +24,9 @@ export async function addSubtask(taskId: Id, title: string): Promise<Subtask> {
     await db.subtasks.delete(subtask.id);
   });
   return subtask;
-}
+});
 
-export async function renameSubtask(id: Id, title: string): Promise<void> {
+export const renameSubtask = command(async (id: Id, title: string): Promise<void> => {
   const text = title.trim();
   const before = await db.subtasks.get(id);
   if (!before || !text || text === before.title) return;
@@ -34,10 +34,10 @@ export async function renameSubtask(id: Id, title: string): Promise<void> {
   recordUndo('Rename subtask', async () => {
     await db.subtasks.update(id, { title: before.title });
   });
-}
+});
 
 /** Checking a subtask counts as activity on its task for the day. */
-export async function setSubtaskCompleted(id: Id, completed: boolean): Promise<void> {
+export const setSubtaskCompleted = command(async (id: Id, completed: boolean): Promise<void> => {
   const before = await db.subtasks.get(id);
   if (!before) return;
   const task = await db.tasks.get(before.taskId);
@@ -51,13 +51,13 @@ export async function setSubtaskCompleted(id: Id, completed: boolean): Promise<v
       if (completed && task) await db.tasks.update(task.id, { lastActivityDay: task.lastActivityDay });
     });
   });
-}
+});
 
-export async function deleteSubtask(id: Id): Promise<void> {
+export const deleteSubtask = command(async (id: Id): Promise<void> => {
   const before = await db.subtasks.get(id);
   if (!before) return;
   await db.subtasks.delete(id);
   recordUndo('Delete subtask', async () => {
     await db.subtasks.add(before);
   });
-}
+});

@@ -33,9 +33,12 @@ npm run e2e        # browser tests against a production build
 
 ## Status
 
-Phases 0 and 1 of 8 are done.
+Phases 0 to 2 of 8 are done.
 
 - **Phase 0:** project foundation, local storage, undo, app shell, light and dark themes.
 - **Phase 1:** tasks and the board. Add-task window with typing shortcuts (`~` time, `#` channel, `@` date, `!` priority), task cards, task page with subtasks and rich-text notes, channels and filter, the Today view, the day-column board with drag and drop, and the task keyboard shortcuts.
+- **Phase 2:** calendar and timeboxing. A time grid in the right panel and as its own view (day, 3 days, week); drag a task onto it, move and resize sessions, draw events; `X` auto-schedules into the next free time and offers choices when the day is full; planned time and sessions stay in step; finishing early shortens the session and pulls the next ones forward; a workload counter on every day.
 
-Calendar, Focus, the rituals, Backlog and Settings are placeholders until their phase.
+Not built yet within these phases: the month calendar range, turning an event into a task, and repeating events.
+
+Focus, the rituals, Backlog and Settings are placeholders until their phase.

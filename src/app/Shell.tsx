@@ -1,6 +1,8 @@
 import { Outlet } from '@tanstack/react-router';
 import { ReferenceDataProvider } from '@/data/ReferenceData';
+import { NoRoomDialog } from '@/features/calendar/NoRoomDialog';
 import { AddTaskWindow } from '@/features/task/AddTaskWindow';
+import { TaskDndRoot } from '@/features/task/TaskDnd';
 import { TaskPage } from '@/features/task/TaskPage';
 import { useTaskShortcuts } from '@/features/task/useTaskShortcuts';
 import { LeftNav } from './LeftNav';
@@ -13,7 +15,9 @@ import { useGlobalShortcuts } from './useGlobalShortcuts';
 export function Shell() {
   return (
     <ReferenceDataProvider>
-      <ShellBody />
+      <TaskDndRoot>
+        <ShellBody />
+      </TaskDndRoot>
     </ReferenceDataProvider>
   );
 }
@@ -33,6 +37,7 @@ function ShellBody() {
       <UndoToast />
       <AddTaskWindow />
       <TaskPage />
+      <NoRoomDialog />
     </div>
   );
 }

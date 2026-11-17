@@ -4,14 +4,14 @@ import { useTasksInRange } from '@/data/queries';
 import { useChannelMap } from '@/data/ReferenceData';
 import type { Task } from '@/data/types';
 import { today } from '@/domain/clock';
-import { formatMinutes, shiftDay, type Day } from '@/domain/dates';
+import { shiftDay, type Day } from '@/domain/dates';
 import { monthLabel, shortDate, weekdayName } from '@/domain/dayLabels';
 import { matchesFilter } from '@/domain/filter';
 import { ViewHeader } from '@/features/common/ViewHeader';
 import { useDayKeys } from '@/features/common/useDayKeys';
 import { AddTaskRow } from '@/features/task/AddTaskRow';
-import { TaskDataProvider } from '@/features/task/TaskData';
-import { TaskDnd, TaskList } from '@/features/task/TaskDnd';
+import { TaskList, useTaskLists } from '@/features/task/TaskDnd';
+import { WorkloadCounter } from '@/features/task/WorkloadCounter';
 
 const COLUMN_WIDTH = 280;
 // Each column carries its gap as left padding, so snapping a day to the left
@@ -21,15 +21,15 @@ const STRIDE = COLUMN_WIDTH + GAP;
 const PAGE = 7;
 
 function DayColumn({ day, tasks, isToday, focused, onFocus }: { day: Day; tasks: Task[]; isToday: boolean; focused: boolean; onFocus: () => void }) {
-  const open = tasks.filter((t) => t.completedAt === null);
-  const remaining = open.reduce((sum, t) => sum + (t.plannedMin ?? 0), 0);
   return (
     <section aria-label={`${weekdayName(day)} ${shortDate(day)}`} data-day={day} className="flex h-full shrink-0 flex-col" style={{ width: STRIDE, paddingLeft: GAP }}>
-      <button type="button" onClick={onFocus} className="flex items-baseline gap-2 rounded px-1 pb-2 text-left">
+      <button type="button" onClick={onFocus} className="flex items-baseline gap-2 rounded px-1 pb-1 text-left">
         <span className={`text-[15px] font-semibold tracking-tight ${isToday ? 'text-accent' : focused ? 'text-ink' : 'text-ink-2'}`}>{weekdayName(day)}</span>
         <span className="text-[12.5px] text-ink-3">{shortDate(day)}</span>
-        {remaining > 0 && <span className="tabular ml-auto text-[12px] text-ink-3">{formatMinutes(remaining)}</span>}
       </button>
+      <div className="px-1 pb-2.5">
+        <WorkloadCounter day={day} tasks={tasks} />
+      </div>
       <AddTaskRow day={day} />
       <div className="mt-2 min-h-0 flex-1 overflow-y-auto pb-6">
         <TaskList listId={day} tasks={tasks} className="min-h-full" />
@@ -62,7 +62,7 @@ export function BoardPage() {
     for (const day of days) result[day] = (grouped?.get(day) ?? []).filter((t) => matchesFilter(t, filter, channels));
     return result;
   }, [days, grouped, filter, channels]);
-  const allTasks = useMemo(() => Object.values(lists).flat(), [lists]);
+  const ordered = useTaskLists('board', lists);
 
   const scrollToDay = useCallback(
     (day: Day, behavior: ScrollBehavior = 'smooth') => {
@@ -115,26 +115,20 @@ export function BoardPage() {
         onNext={() => step(1)}
         onBackToToday={leftmost !== current ? () => scrollToDay(current) : undefined}
       />
-      <TaskDataProvider tasks={allTasks}>
-        <TaskDnd lists={lists}>
-          {(ordered) => (
-            <div ref={scroller} onScroll={onScroll} data-testid="board" className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden pt-5">
-              {days.map((day) => (
-                <DayColumn
-                  key={day}
-                  day={day}
-                  tasks={ordered[day] ?? []}
-                  isToday={day === current}
-                  focused={day === (focusedDay ?? current)}
-                  onFocus={() => setFocusedDay(day)}
-                />
-              ))}
-              {/* Lets the last column scroll all the way to the left edge. */}
-              <div className="shrink-0" style={{ width: '60vw' }} />
-            </div>
-          )}
-        </TaskDnd>
-      </TaskDataProvider>
+      <div ref={scroller} onScroll={onScroll} data-testid="board" className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden pt-5">
+        {days.map((day) => (
+          <DayColumn
+            key={day}
+            day={day}
+            tasks={ordered[day] ?? []}
+            isToday={day === current}
+            focused={day === (focusedDay ?? current)}
+            onFocus={() => setFocusedDay(day)}
+          />
+        ))}
+        {/* Lets the last column scroll all the way to the left edge. */}
+        <div className="shrink-0" style={{ width: '60vw' }} />
+      </div>
     </div>
   );
 }

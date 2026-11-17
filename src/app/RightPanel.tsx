@@ -1,8 +1,20 @@
-import { Archive, CalendarDays, ListTodo, Search, Target, Trash2, type LucideIcon } from 'lucide-react';
+import { useRouterState } from '@tanstack/react-router';
+import { Archive, CalendarDays, ListChecks, ListTodo, Search, Target, Trash2, type LucideIcon } from 'lucide-react';
+import { CalendarPanel } from '@/features/calendar/CalendarPanel';
+import { TasksPanel } from '@/features/calendar/TasksPanel';
 import { useUi, type RightPanelKind } from './uiStore';
 
-const panels: { kind: RightPanelKind; label: string; icon: LucideIcon; hint?: string; body: string }[] = [
-  { kind: 'calendar', label: 'Calendar', icon: CalendarDays, hint: 'Shift C', body: 'Your day on a timeline. Drag tasks here to timebox them.' },
+interface PanelDef {
+  kind: RightPanelKind;
+  label: string;
+  icon: LucideIcon;
+  hint?: string;
+  /** Shown until the panel is built. */
+  body?: string;
+}
+
+const panels: PanelDef[] = [
+  { kind: 'calendar', label: 'Calendar', icon: CalendarDays, hint: 'Shift C' },
   { kind: 'objectives', label: 'Weekly objectives', icon: Target, hint: 'Shift R', body: 'This week’s objectives and the time planned for each.' },
   { kind: 'backlog', label: 'Backlog', icon: ListTodo, hint: 'Shift B', body: 'Tasks without a day. Drag one onto a day to schedule it.' },
   { kind: 'archive', label: 'Archive', icon: Archive, hint: 'Shift A', body: 'Tasks that rolled over too many days in a row land here.' },
@@ -12,7 +24,10 @@ const panels: { kind: RightPanelKind; label: string; icon: LucideIcon; hint?: st
 
 export function RightPanel() {
   const { rightOpen, rightPanel, showRightPanel } = useUi();
-  const active = panels.find((p) => p.kind === rightPanel) ?? panels[0];
+  // In the Calendar view the calendar is already in the centre, so its slot holds the day's tasks.
+  const onCalendar = useRouterState({ select: (s) => s.location.pathname === '/calendar' });
+  const shown = panels.map((p) => (p.kind === 'calendar' && onCalendar ? { ...p, label: 'Tasks', icon: ListChecks, hint: 'Shift C' } : p));
+  const active = shown.find((p) => p.kind === rightPanel) ?? shown[0];
 
   return (
     <div className="flex shrink-0">
@@ -22,15 +37,22 @@ export function RightPanel() {
         className="overflow-hidden border-line transition-[width] duration-200 ease-out-soft"
         style={{ width: rightOpen ? 300 : 0, borderLeftWidth: rightOpen ? 1 : 0 }}
       >
-        {rightOpen && (
-          <div className="flex h-full w-[300px] flex-col gap-2 p-4">
-            <h2 className="text-[13px] font-semibold">{active.label}</h2>
-            <p className="text-[13px] text-ink-3">{active.body}</p>
-          </div>
-        )}
+        {rightOpen &&
+          (active.kind === 'calendar' ? (
+            onCalendar ? (
+              <TasksPanel />
+            ) : (
+              <CalendarPanel />
+            )
+          ) : (
+            <div className="flex h-full w-[300px] flex-col gap-2 p-4">
+              <h2 className="text-[13px] font-semibold">{active.label}</h2>
+              <p className="text-[13px] text-ink-3">{active.body}</p>
+            </div>
+          ))}
       </aside>
       <div role="toolbar" aria-label="Side panels" className="flex w-12 flex-col items-center gap-1 border-l border-line py-3">
-        {panels.map(({ kind, label, icon: Icon, hint }) => {
+        {shown.map(({ kind, label, icon: Icon, hint }) => {
           const on = rightOpen && rightPanel === kind;
           return (
             <button

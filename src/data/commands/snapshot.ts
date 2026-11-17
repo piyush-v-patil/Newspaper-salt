@@ -17,8 +17,9 @@ async function sessionsIn(scope: Scope): Promise<Session[]> {
 }
 
 /**
- * Runs a command that changes tasks and calendar sessions together, and
- * records one undo step that puts everything in scope back as it was.
+ * Runs the body of a command that changes tasks and calendar sessions
+ * together, and records one undo step that puts everything in scope back as
+ * it was. Call it from inside a command; it does not queue by itself.
  */
 export async function withSnapshot<T>(label: string, scope: Scope, work: () => Promise<T>, announce = false): Promise<T> {
   const tasksBefore = (await db.tasks.bulkGet(scope.taskIds ?? [])).filter((t) => t !== undefined);
@@ -27,12 +28,10 @@ export async function withSnapshot<T>(label: string, scope: Scope, work: () => P
   recordUndo(
     label,
     async () => {
-      await db.transaction('rw', db.tasks, db.sessions, async () => {
-        const current = await sessionsIn(scope);
-        await db.sessions.bulkDelete(current.map((s) => s.id));
-        await db.sessions.bulkPut(sessionsBefore);
-        await db.tasks.bulkPut(tasksBefore);
-      });
+      const current = await sessionsIn(scope);
+      await db.sessions.bulkDelete(current.map((s) => s.id));
+      await db.sessions.bulkPut(sessionsBefore);
+      await db.tasks.bulkPut(tasksBefore);
     },
     announce,
   );

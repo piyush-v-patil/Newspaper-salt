@@ -103,7 +103,8 @@ test('the task page edits title, subtasks and notes, and they persist', async ({
   await dialog.getByRole('textbox', { name: 'Notes' }).click();
   await page.keyboard.type('Use the September figures.');
   await dialog.getByRole('button', { name: 'Planned time' }).click();
-  await page.keyboard.type('2h');
+  // Wait for the picker itself; typing before it has focus would go nowhere.
+  await page.getByPlaceholder('e.g. 45 or 1h30').fill('2h');
   await page.keyboard.press('Enter');
 
   await page.keyboard.press('Escape');

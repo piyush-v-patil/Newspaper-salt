@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { useUi } from '@/app/uiStore';
+import { autoScheduleTask, clearSessions } from '@/data/commands/sessions';
 import { deleteTask, duplicateTask, moveTask, nudgeTask, setTaskCompleted, snoozeTask } from '@/data/commands/tasks';
 import { db } from '@/data/db';
 import { BACKLOG } from '@/data/types';
@@ -75,6 +77,12 @@ export function useTaskShortcuts(): void {
         if (e.key === 'Enter') return act(() => openTask(id));
         if (e.key.toLowerCase() === 'd') return act(() => duplicateTask(id));
         if (e.key === 'Backspace' || e.key === 'Delete') return act(() => deleteTask(id));
+        if (e.key.toLowerCase() === 'x') {
+          return act(async () => {
+            const task = await db.tasks.get(id);
+            if (task && task.day !== BACKLOG) await clearSessions(id, task.day);
+          });
+        }
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           const up = e.key === 'ArrowUp';
           if (!e.shiftKey) return act(() => nudgeTask(id, up ? 'up' : 'down'));
@@ -104,6 +112,13 @@ export function useTaskShortcuts(): void {
           return act(() => {
             focus.setFocusSubtaskOnOpen(true);
             openTask(id);
+          });
+        case 'x':
+        case 'X':
+          // X finds the next free time; Shift+X keeps the task in one block.
+          return act(async () => {
+            const result = await autoScheduleTask(id, { allowSplit: e.key === 'x' });
+            if (result === 'no-room') useUi.getState().setNoRoomTask(id);
           });
         case 's':
           return act(() => moveTask(id, today()));

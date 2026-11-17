@@ -21,7 +21,7 @@ export function PopoverContent({ children, side = 'bottom', align = 'start', lab
         sideOffset={6}
         collisionPadding={12}
         aria-label={label}
-        className="z-50 overflow-hidden rounded-lg border border-line bg-surface shadow-pop outline-none animate-pop"
+        className="z-50 overflow-hidden rounded-lg border border-line bg-surface shadow-pop outline-none data-[state=open]:animate-pop"
       >
         {children}
       </RadixPopover.Content>

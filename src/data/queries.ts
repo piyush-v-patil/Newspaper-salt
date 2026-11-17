@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Day } from '@/domain/dates';
 import { compareKeys } from '@/domain/ordering';
 import { db } from './db';
-import type { Id, Subtask, Task, TaskDay } from './types';
+import type { CalendarEvent, Id, Session, Subtask, Task, TaskDay } from './types';
 
 const byOrder = (a: { order: string }, b: { order: string }) => compareKeys(a.order, b.order);
 
@@ -50,4 +50,23 @@ export function useSubtasks(taskIds: Id[]): Map<Id, Subtask[]> {
     for (const list of grouped.values()) list.sort(byOrder);
     return grouped;
   }, [rows]);
+}
+
+export interface ScheduledSession extends Session {
+  task: Task;
+}
+
+/** Live calendar contents for a set of days: events, and the sessions of tasks still in play. */
+export function useSchedule(days: Day[]): { sessions: ScheduledSession[]; events: CalendarEvent[] } | undefined {
+  const key = days.join(',');
+  return useLiveQuery(async () => {
+    const rows = await db.sessions.where('day').anyOf(days).toArray();
+    const tasks = await db.tasks.bulkGet(rows.map((r) => r.taskId));
+    const sessions = rows.flatMap((row, i) => {
+      const task = tasks[i];
+      return task?.state === 'active' ? [{ ...row, task }] : [];
+    });
+    const events = await db.events.where('day').anyOf(days).toArray();
+    return { sessions, events };
+  }, [key]);
 }

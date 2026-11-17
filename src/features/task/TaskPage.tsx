@@ -87,7 +87,7 @@ function TaskPageBody({ task, onClose }: { task: Task; onClose: () => void }) {
               </button>
             </Menu.Trigger>
             <Menu.Portal>
-              <Menu.Content align="end" sideOffset={6} className="z-50 min-w-[168px] rounded-lg border border-line bg-surface p-1 shadow-pop animate-pop">
+              <Menu.Content align="end" sideOffset={6} className="z-50 min-w-[168px] rounded-lg border border-line bg-surface p-1 shadow-pop data-[state=open]:animate-pop">
                 <Menu.Item className={menuItem} onSelect={() => void duplicateTask(task.id)}>
                   <Copy size={14} /> Duplicate
                 </Menu.Item>
@@ -144,11 +144,11 @@ export function TaskPage() {
   return (
     <Dialog.Root open={showing !== null} onOpenChange={(open) => !open && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/25 animate-fade" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/25 data-[state=open]:animate-fade" />
         <Dialog.Content
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-[9%] z-50 flex max-h-[82vh] w-[min(680px,calc(100vw-32px))] -translate-x-1/2 flex-col rounded-xl border border-line bg-surface shadow-pop outline-none animate-pop"
+          className="fixed left-1/2 top-[9%] z-50 flex max-h-[82vh] w-[min(680px,calc(100vw-32px))] -translate-x-1/2 flex-col rounded-xl border border-line bg-surface shadow-pop outline-none data-[state=open]:animate-pop"
         >
           <Dialog.Title className="sr-only">{showing?.title ?? 'Task'}</Dialog.Title>
           {showing && <TaskPageBody task={showing} onClose={close} />}

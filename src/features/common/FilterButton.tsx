@@ -38,7 +38,7 @@ export function FilterButton() {
           </button>
         </Menu.Trigger>
         <Menu.Portal>
-          <Menu.Content align="end" sideOffset={6} className="z-50 max-h-[360px] min-w-[208px] overflow-y-auto rounded-lg border border-line bg-surface p-1 shadow-pop animate-pop">
+          <Menu.Content align="end" sideOffset={6} className="z-50 max-h-[360px] min-w-[208px] overflow-y-auto rounded-lg border border-line bg-surface p-1 shadow-pop data-[state=open]:animate-pop">
             <Menu.Item className={item} onSelect={() => setFilter(null)}>
               <span className="flex-1">All tasks</span>
               {!filter && <Check size={14} />}

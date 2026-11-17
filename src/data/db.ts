@@ -89,3 +89,25 @@ export async function getProfile(): Promise<Profile> {
   const row = await db.meta.get('profile');
   return (row?.value as Profile) ?? newProfile(Date.now());
 }
+
+let tail: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs write commands one at a time, in the order they were issued. Two
+ * commands issued back to back therefore never interleave: the second sees
+ * everything the first wrote. Without this, two quick adds could read the
+ * same list and choose the same position.
+ *
+ * A command must never call another queued command, or it would wait for
+ * itself. Shared steps live in plain functions that commands call directly.
+ */
+export function serial<T>(work: () => Promise<T>): Promise<T> {
+  const run = tail.then(work, work);
+  tail = run.catch(() => undefined);
+  return run;
+}
+
+/** Wraps a command so every call goes through the queue. */
+export function command<A extends unknown[], R>(fn: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
+  return (...args: A) => serial(() => fn(...args));
+}

@@ -4,7 +4,8 @@ import { Clock, Flag } from 'lucide-react';
 import { setChannel, setDailyPriority, setPlannedTime, setTaskCompleted, moveTask } from '@/data/commands/tasks';
 import { setSubtaskCompleted } from '@/data/commands/subtasks';
 import type { DailyPriority, Task } from '@/data/types';
-import { formatMinutes } from '@/domain/dates';
+import { useChannelMap, useSettings } from '@/data/ReferenceData';
+import { formatClock, formatMinutes } from '@/domain/dates';
 import { CheckCircle } from '@/ui/CheckCircle';
 import { PopoverAnchor, PopoverContent, PopoverRoot } from '@/ui/Popover';
 import { ChannelTag } from './ChannelTag';
@@ -23,7 +24,11 @@ const PRIORITY_COLOR: Record<DailyPriority, string> = {
 
 /** What a task card shows. Used by the list and by the copy that follows the cursor while dragging. */
 export function TaskCardBody({ task }: { task: Task }) {
-  const { channels, subtasks } = useTaskData();
+  const { subtasks, sessions } = useTaskData();
+  const channels = useChannelMap();
+  const timeFormat = useSettings().timeFormat;
+  // The first timebox on the day the card sits on.
+  const scheduled = sessions.get(task.id)?.find((s) => s.day === task.day);
   const openAction = useTaskFocus((s) => s.openAction);
   const channel = task.channelId ? channels.get(task.channelId) : undefined;
   const items = subtasks.get(task.id) ?? [];
@@ -86,18 +91,23 @@ export function TaskCardBody({ task }: { task: Task }) {
         </ul>
       )}
 
-      {(channel || task.rolloverDays > 0) && (
+      {(channel || scheduled || task.rolloverDays > 0) && (
         <div className="mt-2 flex items-center justify-between gap-2">
-          {task.rolloverDays > 0 ? (
-            <span
-              className="tabular grid h-[18px] min-w-[18px] place-items-center rounded-full bg-hover px-1 text-[11px] font-medium text-ink-2"
-              title={`Rolled over ${task.rolloverDays} ${task.rolloverDays === 1 ? 'day' : 'days'} in a row`}
-            >
-              {task.rolloverDays}
-            </span>
-          ) : (
-            <span />
-          )}
+          <span className="flex items-center gap-1.5">
+            {scheduled && (
+              <span className="tabular text-[12px] font-medium text-accent" title="Scheduled on the calendar">
+                {formatClock(scheduled.startMin, timeFormat)}
+              </span>
+            )}
+            {task.rolloverDays > 0 && (
+              <span
+                className="tabular grid h-[18px] min-w-[18px] place-items-center rounded-full bg-hover px-1 text-[11px] font-medium text-ink-2"
+                title={`Rolled over ${task.rolloverDays} ${task.rolloverDays === 1 ? 'day' : 'days'} in a row`}
+              >
+                {task.rolloverDays}
+              </span>
+            )}
+          </span>
           {channel && (
             <button type="button" onClick={open('channel')} aria-label={`Channel ${channel.name}`} className="min-w-0 rounded">
               <ChannelTag channel={channel} />

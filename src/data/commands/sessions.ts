@@ -2,7 +2,7 @@ import { now, nowMinutes, today } from '@/domain/clock';
 import { shiftDay, weekdayOf, type Day } from '@/domain/dates';
 import { compareKeys, keyAtEdge } from '@/domain/ordering';
 import { autoSchedule, displace, scheduleAnyway, type Interval } from '@/domain/scheduling';
-import { db, getSettings } from '../db';
+import { command, db, getSettings } from '../db';
 import { BACKLOG, type Id, type Session, type Settings, type Task } from '../types';
 import { withSnapshot } from './snapshot';
 
@@ -69,7 +69,7 @@ interface PlaceOptions {
 }
 
 /** Timeboxes a task at a chosen time (dragging it onto the calendar). */
-export async function scheduleTaskAt(taskId: Id, day: Day, startMin: number, options: PlaceOptions = {}): Promise<Session> {
+export const scheduleTaskAt = command(async (taskId: Id, day: Day, startMin: number, options: PlaceOptions = {}): Promise<Session> => {
   const task = await requireTask(taskId);
   const settings = await getSettings();
   const duration = await nextSessionLength(task, settings);
@@ -87,10 +87,10 @@ export async function scheduleTaskAt(taskId: Id, day: Day, startMin: number, opt
     await syncPlanned(taskId);
     return session;
   });
-}
+});
 
 /** Moves or resizes a session. Its task's planned time follows the new total. */
-export async function changeSession(id: Id, next: { day: Day; startMin: number; endMin: number }, options: PlaceOptions = {}): Promise<void> {
+export const changeSession = command(async (id: Id, next: { day: Day; startMin: number; endMin: number }, options: PlaceOptions = {}): Promise<void> => {
   const before = await db.sessions.get(id);
   if (!before) return;
   const task = await requireTask(before.taskId);
@@ -105,25 +105,25 @@ export async function changeSession(id: Id, next: { day: Day; startMin: number; 
     if ((options.reschedule ?? true) && settings.rescheduleOnConflict) await makeRoom(updated, settings);
     await syncPlanned(task.id);
   });
-}
+});
 
 /** Takes one session off the calendar. The task and its estimate stay. */
-export async function removeSession(id: Id): Promise<void> {
+export const removeSession = command(async (id: Id): Promise<void> => {
   const session = await db.sessions.get(id);
   if (!session) return;
   await withSnapshot('Remove from calendar', { taskIds: [session.taskId] }, async () => {
     await db.sessions.delete(id);
   });
-}
+});
 
 /** Takes a task off the calendar for one day (Ctrl+X). */
-export async function clearSessions(taskId: Id, day: Day): Promise<void> {
+export const clearSessions = command(async (taskId: Id, day: Day): Promise<void> => {
   const ids = (await db.sessions.where('taskId').equals(taskId).toArray()).filter((s) => s.day === day).map((s) => s.id);
   if (ids.length === 0) return;
   await withSnapshot('Remove from calendar', { taskIds: [taskId] }, async () => {
     await db.sessions.bulkDelete(ids);
   });
-}
+});
 
 async function addBlocks(task: Task, day: Day, blocks: Interval[], label: string): Promise<void> {
   await withSnapshot(label, { taskIds: [task.id], days: [day] }, async () => {
@@ -153,7 +153,7 @@ const dayFor = (task: Task): Day => (task.day === BACKLOG ? today() : task.day);
  * Finds the next free time on the task's day and timeboxes it there (X).
  * Returns 'no-room' without changing anything when the day is full.
  */
-export async function autoScheduleTask(taskId: Id, options: { allowSplit?: boolean } = {}): Promise<'scheduled' | 'no-room'> {
+export const autoScheduleTask = command(async (taskId: Id, options: { allowSplit?: boolean } = {}): Promise<'scheduled' | 'no-room'> => {
   const task = await requireTask(taskId);
   const settings = await getSettings();
   const day = dayFor(task);
@@ -161,10 +161,10 @@ export async function autoScheduleTask(taskId: Id, options: { allowSplit?: boole
   if (!blocks) return 'no-room';
   await addBlocks(task, day, blocks, 'Add to calendar');
   return 'scheduled';
-}
+});
 
 /** Books the task after everything else on its day, outside working hours if need be. */
-export async function scheduleTaskAnyway(taskId: Id): Promise<void> {
+export const scheduleTaskAnyway = command(async (taskId: Id): Promise<void> => {
   const task = await requireTask(taskId);
   const settings = await getSettings();
   const day = dayFor(task) < today() ? today() : dayFor(task);
@@ -176,10 +176,10 @@ export async function scheduleTaskAnyway(taskId: Id): Promise<void> {
     day === today() ? nowMinutes() : 0,
   );
   if (block) await addBlocks(task, day, [block], 'Add to calendar');
-}
+});
 
 /** Moves the task to the next day that has room (looking up to a month ahead) and timeboxes it there. */
-export async function scheduleOnNextFreeDay(taskId: Id): Promise<Day | null> {
+export const scheduleOnNextFreeDay = command(async (taskId: Id): Promise<Day | null> => {
   const task = await requireTask(taskId);
   const settings = await getSettings();
   const from = dayFor(task) < today() ? today() : dayFor(task);
@@ -192,4 +192,4 @@ export async function scheduleOnNextFreeDay(taskId: Id): Promise<Day | null> {
     }
   }
   return null;
-}
+});

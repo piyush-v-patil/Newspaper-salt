@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { isDay, type Day } from '@/domain/dates';
 import { BoardPage } from '@/features/board/BoardPage';
+import { CalendarPage } from '@/features/calendar/CalendarPage';
 import { ComingSoon } from '@/features/placeholder/ComingSoon';
 import { TodayPage } from '@/features/today/TodayPage';
 import { Shell } from './Shell';
@@ -40,7 +41,11 @@ const boardRoute = createRoute({ getParentRoute: parent, path: '/board', compone
 const calendarRoute = createRoute({
   getParentRoute: parent,
   path: '/calendar',
-  component: () => <ComingSoon title="Calendar" phase={2} summary="Your events and timeboxed tasks on a time grid." />,
+  validateSearch: (search: Record<string, unknown>): { date?: Day } => (isDay(search.date) ? { date: search.date } : {}),
+  component: function Calendar() {
+    const { date } = calendarRoute.useSearch();
+    return <CalendarPage date={date} />;
+  },
 });
 const focusRoute = createRoute({
   getParentRoute: parent,

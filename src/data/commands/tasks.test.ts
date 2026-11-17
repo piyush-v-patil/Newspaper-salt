@@ -239,3 +239,25 @@ describe('channels', () => {
     expect(await db.channels.count()).toBe(3);
   });
 });
+
+describe('commands issued back to back', () => {
+  it('never give two tasks the same position', async () => {
+    // Fire without waiting, as fast typing does.
+    await Promise.all(['a', 'b', 'c', 'd', 'e'].map((title) => createTask({ title })));
+    const list = await tasksForDay(DAY);
+    expect(new Set(list.map((t) => t.order)).size).toBe(5);
+    // Each new task went to the top, so the last one issued is first.
+    expect(list.map((t) => t.title)).toEqual(['e', 'd', 'c', 'b', 'a']);
+  });
+
+  it('create one channel when the same new name arrives twice', async () => {
+    const [first, second] = await Promise.all([createChannel('research'), createChannel('research')]);
+    expect(first.id).toBe(second.id);
+  });
+
+  it('keep running after one of them fails', async () => {
+    const results = await Promise.allSettled([createTask({ title: '  ' }), createTask({ title: 'fine' })]);
+    expect(results.map((r) => r.status)).toEqual(['rejected', 'fulfilled']);
+    expect((await tasksForDay(DAY)).map((t) => t.title)).toEqual(['fine']);
+  });
+});
