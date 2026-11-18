@@ -10,7 +10,7 @@ import { supabase, supabaseTransport } from './supabase';
 import { WEB_APP_URL } from './config';
 import { BASE } from '@/app/appPath';
 import { platform } from '@/platform';
-import type { SyncTransport } from './transport';
+import type { RemoteRow, SyncTransport } from './transport';
 
 export interface SyncStatus {
   configured: boolean;
@@ -20,6 +20,7 @@ export interface SyncStatus {
   error: string | null;
   /** Both this device and the account already have data: the person picks what happens. */
   needsChoice: boolean;
+  choice: { account: Holdings; device: Holdings } | null;
 }
 
 export const useSyncStatus = create<SyncStatus>(() => ({
@@ -29,6 +30,7 @@ export const useSyncStatus = create<SyncStatus>(() => ({
   lastSyncedAt: null,
   error: null,
   needsChoice: false,
+  choice: null,
 }));
 
 /** Changes made on this device that have not reached the account yet. */
@@ -74,21 +76,59 @@ let running: Promise<void> | null = null;
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-async function localHasData(): Promise<boolean> {
-  return (await db.tasks.count()) > 0;
+/** What a side holds, to decide what a first sign-in does and to show in the choice. */
+export interface Holdings {
+  tasks: number;
+  setUp: boolean;
+}
+const meaningful = (h: Holdings) => h.tasks > 0 || h.setUp;
+
+async function deviceHoldings(): Promise<Holdings> {
+  const profile = (await db.meta.get('profile'))?.value as { onboardingCompletedAt?: number | null } | undefined;
+  return { tasks: await db.tasks.where('state').equals('active').count(), setUp: !!profile?.onboardingCompletedAt };
 }
 
-/** First sign-in on this device: upload, download, or ask. */
+async function accountRows(): Promise<RemoteRow[]> {
+  const rows: RemoteRow[] = [];
+  for (let since = 0; ; ) {
+    const page = await transport!.pull(since, 1000);
+    rows.push(...page);
+    if (page.length < 1000) return rows;
+    since = page[page.length - 1].seq;
+  }
+}
+
+function accountHoldings(rows: RemoteRow[]): Holdings {
+  const live = rows.filter((r) => !r.deleted);
+  const tasks = live.filter((r) => r.tbl === 'tasks' && (r.data as { state?: string })?.state === 'active').length;
+  const profile = live.find((r) => r.tbl === 'meta' && r.id === 'profile')?.data as { value?: { onboardingCompletedAt?: number | null } } | undefined;
+  return { tasks, setUp: !!profile?.value?.onboardingCompletedAt };
+}
+
+/** This device's data becomes the account's: everything here is sent, and anything else in the account removed. */
+async function uploadOver(rows: RemoteRow[]): Promise<void> {
+  const at = now();
+  await markEverything(db, outbox, TABLES, at);
+  // Records only the account has (a blank starter profile's channels, say) are sent as deletions.
+  outbox.noteAll(rows.filter((r) => !r.deleted).map((r) => ({ tbl: r.tbl, id: r.id, changedAt: at })));
+}
+
+/**
+ * First sign-in on this device. Whichever side has real data (tasks, or
+ * finished setup) wins; when both do, the person chooses.
+ */
 async function joinAccount(userId: string): Promise<void> {
-  const remoteHasData = (await transport!.pull(0, 1)).length > 0;
-  if (!remoteHasData) {
-    await markEverything(db, outbox, TABLES, now());
+  const rows = await accountRows();
+  const account = accountHoldings(rows);
+  const device = await deviceHoldings();
+  if (!meaningful(account)) {
+    await uploadOver(rows);
     writeLink(userId, { cursor: 0, linked: true });
-  } else if (!(await localHasData())) {
+  } else if (!meaningful(device)) {
     const state = await replaceWithRemote(db, transport!, outbox, TABLES);
     writeLink(userId, { ...state, linked: true });
   } else {
-    useSyncStatus.setState({ needsChoice: true });
+    useSyncStatus.setState({ needsChoice: true, choice: { account, device } });
   }
 }
 
@@ -127,10 +167,11 @@ export async function resolveFirstSync(choice: 'account' | 'combine'): Promise<v
     const state = await replaceWithRemote(db, transport, outbox, TABLES);
     writeLink(user.id, { ...state, linked: true });
   } else {
+    await adoptMatchingNames(await accountRows());
     await markEverything(db, outbox, TABLES, now());
     writeLink(user.id, { cursor: 0, linked: true });
   }
-  useSyncStatus.setState({ needsChoice: false });
+  useSyncStatus.setState({ needsChoice: false, choice: null });
   await syncNow();
 }
 
@@ -189,8 +230,45 @@ export async function resendConfirmation(email: string): Promise<string | null> 
 
 /** Signs out. This device keeps its data; it simply stops syncing. */
 export async function signOut(): Promise<void> {
-  await syncNow();
+  if (!useSyncStatus.getState().needsChoice) await syncNow();
+  useSyncStatus.setState({ needsChoice: false, choice: null });
   outbox.tracking = false;
   outbox.clear();
   await supabase()?.auth.signOut();
+}
+
+/**
+ * Before combining: a channel or context here with the same name as one in
+ * the account takes the account's id, so combining does not leave two
+ * "#work" channels. Everything pointing at it follows.
+ */
+async function adoptMatchingNames(rows: RemoteRow[]): Promise<void> {
+  const live = rows.filter((r) => !r.deleted);
+  const byName = (tbl: string) => new Map(live.filter((r) => r.tbl === tbl).map((r) => [(r.data as { name: string }).name.toLowerCase(), r.data as { id: string }]));
+  const remoteContexts = byName('contexts');
+  const remoteChannels = byName('channels');
+  await db.transaction('rw', [db.contexts, db.channels, db.tasks, db.events, db.objectives, db.series, db.eventSeries], async () => {
+    const contextIds = new Map<string, string>();
+    for (const context of await db.contexts.toArray()) {
+      const match = remoteContexts.get(context.name.toLowerCase());
+      if (match && match.id !== context.id) contextIds.set(context.id, match.id);
+    }
+    for (const [from, to] of contextIds) {
+      await db.channels.where('contextId').equals(from).modify({ contextId: to });
+      await db.contexts.delete(from);
+    }
+    const channelIds = new Map<string, string>();
+    for (const channel of await db.channels.toArray()) {
+      const match = remoteChannels.get(channel.name.toLowerCase());
+      if (match && match.id !== channel.id) channelIds.set(channel.id, match.id);
+    }
+    for (const [from, to] of channelIds) {
+      await db.tasks.filter((t) => t.channelId === from).modify({ channelId: to });
+      await db.events.filter((e) => e.channelId === from).modify({ channelId: to });
+      await db.objectives.filter((o) => o.channelId === from).modify({ channelId: to });
+      await db.series.filter((x) => x.template.channelId === from).modify((x) => void (x.template.channelId = to));
+      await db.eventSeries.filter((x) => x.template.channelId === from).modify((x) => void (x.template.channelId = to));
+      await db.channels.delete(from);
+    }
+  });
 }

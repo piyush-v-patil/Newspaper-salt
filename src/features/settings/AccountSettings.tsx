@@ -161,12 +161,16 @@ export function AccountSettings() {
 /** Shown once, when both this device and the account already hold data. */
 export function FirstSyncChoice() {
   const needsChoice = useSyncStatus((s) => s.needsChoice);
+  const choice = useSyncStatus((s) => s.choice);
+  const email = useSyncStatus((s) => s.user?.email);
   const [busy, setBusy] = useState(false);
-  const choose = async (choice: 'account' | 'combine') => {
+  const choose = async (pick: 'account' | 'combine') => {
     setBusy(true);
-    await resolveFirstSync(choice);
+    await resolveFirstSync(pick);
     setBusy(false);
   };
+  const tasks = (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'}`;
+  const option = 'flex flex-col rounded-lg border px-3 py-2.5 text-left hover:bg-hover disabled:opacity-50';
   return (
     <Dialog.Root open={needsChoice}>
       <Dialog.Portal>
@@ -174,16 +178,24 @@ export function FirstSyncChoice() {
         <Dialog.Content
           aria-describedby={undefined}
           onEscapeKeyDown={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-[22%] z-[61] flex w-[min(460px,calc(100vw-32px))] -translate-x-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-5 shadow-pop outline-none"
+          className="fixed left-1/2 top-[20%] z-[61] flex w-[min(480px,calc(100vw-32px))] -translate-x-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-5 shadow-pop outline-none"
         >
           <Dialog.Title className="text-[16px] font-semibold tracking-tight">This device and your account both have tasks</Dialog.Title>
-          <button type="button" disabled={busy} onClick={() => void choose('account')} className="flex flex-col rounded-lg border border-line px-3 py-2.5 text-left hover:bg-hover">
-            <span className="text-[14px] font-medium">Use my account’s data</span>
-            <span className="text-[12.5px] text-ink-3">Replaces what is on this device. A backup of it is saved first.</span>
+          {choice && (
+            <p className="text-[13px] leading-relaxed text-ink-2">
+              Your account{email ? ` (${email})` : ''} has {tasks(choice.account.tasks)}. This device has {tasks(choice.device.tasks)}.
+            </p>
+          )}
+          <button type="button" disabled={busy} onClick={() => void choose('combine')} className={`${option} border-accent/50`}>
+            <span className="text-[14px] font-medium">Combine both (recommended)</span>
+            <span className="text-[12.5px] text-ink-3">Nothing is lost: you get the tasks from both. Channels with the same name are joined.</span>
           </button>
-          <button type="button" disabled={busy} onClick={() => void choose('combine')} className="flex flex-col rounded-lg border border-line px-3 py-2.5 text-left hover:bg-hover">
-            <span className="text-[14px] font-medium">Combine both</span>
-            <span className="text-[12.5px] text-ink-3">Keeps everything from both. Where the same item differs, this device’s version wins.</span>
+          <button type="button" disabled={busy} onClick={() => void choose('account')} className={`${option} border-line`}>
+            <span className="text-[14px] font-medium">Use only my account’s data</span>
+            <span className="text-[12.5px] text-ink-3">Replaces what is on this device. A backup of this device is saved first (Settings → Your data).</span>
+          </button>
+          <button type="button" disabled={busy} onClick={() => void signOut()} className="self-start text-[12.5px] text-ink-3 hover:text-ink">
+            Wrong account? Sign out
           </button>
         </Dialog.Content>
       </Dialog.Portal>

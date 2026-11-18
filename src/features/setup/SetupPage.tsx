@@ -12,7 +12,7 @@ import { formatClock, formatMinutes, shiftDay } from '@/domain/dates';
 import { relativeDayLabel } from '@/domain/dayLabels';
 import { EVENING_FROM_MIN } from '@/domain/rituals';
 import { AccountForm } from '@/features/settings/AccountSettings';
-import { useSyncStatus } from '@/sync/controller';
+import { signOut, syncNow, useSyncStatus } from '@/sync/controller';
 import { CommitmentsEditor, isValidCommitment, saveCommitments, type Commitment } from './Commitments';
 
 const STEPS = 6;
@@ -89,12 +89,40 @@ function ChannelChips({ context, kind, picked, onToggle }: { context: Context; k
 
 /** On the first screen: someone who already uses the app elsewhere signs in and gets their data instead of starting over. */
 function SignInInstead() {
-  const configured = useSyncStatus((s) => s.configured);
-  const user = useSyncStatus((s) => s.user);
+  const { configured, user, phase, error, lastSyncedAt } = useSyncStatus();
   const [open, setOpen] = useState(false);
   if (!configured) return null;
   const box = 'mx-auto -mt-8 w-full max-w-[520px] px-6 pb-16';
-  if (user) return <p className={`${box} text-[13px] text-ink-2`}>Signed in as {user.email}. Fetching your data…</p>;
+  const link = 'text-[13px] font-medium text-accent hover:underline';
+  if (user) {
+    const fetching = phase === 'syncing' || (phase === 'idle' && lastSyncedAt === null);
+    return (
+      <div className={box}>
+        <div role="status" className="flex flex-col gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-[13px] text-ink-2">
+          <p>
+            Signed in as <span className="font-medium text-ink">{user.email}</span>.
+          </p>
+          {phase === 'error' ? (
+            <p className="text-over">Couldn’t reach your account: {error}</p>
+          ) : fetching ? (
+            <p>Fetching your data…</p>
+          ) : (
+            <p>This account doesn’t have anything in it yet. Carry on with setup above and it will be saved to your account. If you meant a different account, sign out and use that one.</p>
+          )}
+          <div className="flex gap-4">
+            {phase === 'error' && (
+              <button type="button" onClick={() => void syncNow()} className={link}>
+                Try again
+              </button>
+            )}
+            <button type="button" onClick={() => void signOut()} className={link}>
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={box}>
       <div className="border-t border-line pt-5">
