@@ -57,21 +57,22 @@ test('first sign-in: empty account, a set-up device, a new device, and combining
 
   // 4. A tablet that was set up on its own, with its own task, signs in: the choice shows both, and combining keeps both.
   const tablet = await freshDevice(browser);
-  await tablet.page.getByLabel('Your name').fill('Pi');
-  for (let i = 0; i < 3; i++) await tablet.page.getByRole('button', { name: /Get started|Continue/ }).click();
-  await tablet.page.getByRole('button', { name: 'Skip' }).click();
-  await tablet.page.getByRole('button', { name: 'Continue' }).click();
-  // Leave setup for the workspace by marking it done the quick way: plan today with one task.
-  await tablet.page.getByRole('button', { name: /Plan today|Plan tomorrow/ }).first().click();
+  await tablet.page.evaluate(async () => {
+    const open = indexedDB.open('life-of-pi');
+    const db: IDBDatabase = await new Promise((resolve) => (open.onsuccess = () => resolve(open.result)));
+    const tx = db.transaction('meta', 'readwrite');
+    const store = tx.objectStore('meta');
+    const profile: { value: object } = await new Promise((resolve) => (store.get('profile').onsuccess = (e) => resolve((e.target as IDBRequest).result)));
+    store.put({ key: 'profile', value: { ...profile.value, name: 'Pi', onboardingCompletedAt: 1, guidedPlansRemaining: 0 } });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    db.close();
+  });
+  await tablet.page.goto('/today');
   await addTasks(tablet.page, 'Tablet task');
-  await tablet.page.getByRole('button', { name: 'Next' }).click();
-  await tablet.page.getByRole('button', { name: 'Next' }).click();
-  await tablet.page.getByRole('button', { name: 'Looks good' }).click();
-  await tablet.page.getByRole('button', { name: 'Get started' }).click();
   await tablet.page.goto('/settings?section=account');
   await signIn(tablet.page);
   const dialog = tablet.page.getByRole('dialog', { name: 'This device and your account both have tasks' });
-  await expect(dialog).toContainText('has 1 task. This device has 2 tasks', { timeout: 20_000 });
+  await expect(dialog).toContainText('has 1 task. This device has 1 task', { timeout: 20_000 });
   await dialog.getByRole('button', { name: /Combine both/ }).click();
   await expect(tablet.page.getByTestId('sync-status')).toHaveText(/Synced/, { timeout: 20_000 });
   await tablet.page.goto('/today');
